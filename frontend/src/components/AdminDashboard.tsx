@@ -178,6 +178,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token }) => {
       {/* 6. TAB 1 : TABLEAU DE BORD & METRIQUES */}
       {activeTab === 'METRICS' && (
         <div className="space-y-6">
+          {/* Bannière visuelle panoramique du Dashboard */}
+          <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200 group">
+            <img
+              src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80"
+              alt="Plateforme Technologique et Supervision Panafricaine - SERVICE RAPIDE"
+              className="w-full h-44 sm:h-52 object-cover object-center group-hover:scale-102 transition duration-500"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-900/70 to-emerald-950/40 p-6 flex flex-col justify-between text-white">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-3 py-1 rounded-full">
+                  Centre de Contrôle Panafricain
+                </span>
+                <span className="text-[11px] font-bold text-slate-300 bg-slate-900/80 px-2.5 py-1 rounded-xl border border-white/10">
+                  ⚡ Données en temps réel
+                </span>
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  Supervision des flux de services et transactions
+                </h3>
+                <p className="text-xs text-slate-300 max-w-lg mt-1 line-clamp-2">
+                  Suivi des inscriptions, déblocages de contacts, flux Mobile Money et gestion manuelle des litiges pour toute l'Afrique.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
               <span className="text-[11px] font-bold text-slate-400 uppercase">Utilisateurs</span>

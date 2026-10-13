@@ -67,8 +67,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             </button>
           </div>
 
+          {/* Image d'illustration vitrine principale du site web */}
+          <div className="pt-8 relative max-w-4xl mx-auto">
+            <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-slate-800/60 backdrop-blur-md group">
+              <img
+                src="https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=1200&q=80"
+                alt="Artisans et techniciens qualifiés en Afrique - SERVICE RAPIDE"
+                className="w-full h-64 sm:h-80 md:h-96 object-cover object-center group-hover:scale-102 transition duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/30 to-transparent flex items-end p-6 sm:p-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-4 text-left">
+                  <div>
+                    <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-400 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-500/30 inline-block mb-1">
+                      Réseau Certifié Panafricain
+                    </span>
+                    <h3 className="text-base sm:text-xl font-black text-white">
+                      Des milliers de professionnels d'intervention prêts à intervenir
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shrink-0">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs font-bold text-white">Disponibilité immédiate</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Badges de confiance */}
-          <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400 font-medium">
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400 font-medium">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>1 semaine gratuite pour les nouveaux clients</span>

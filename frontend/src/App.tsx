@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Header } from './components/Header';
+import { LandingPage } from './components/LandingPage';
 import { AuthView } from './components/AuthView';
 import { RoleSelectionModal } from './components/RoleSelectionModal';
 import { ProviderDashboard } from './components/ProviderDashboard';
@@ -10,7 +11,7 @@ import { PostItem } from './types';
 export function App() {
   const [country, setCountry] = useState('CI');
   const [language, setLanguage] = useState('fr');
-  // Par défaut null : affiche immédiatement le Formulaire d'inscription demandé !
+  const [viewMode, setViewMode] = useState<'LANDING' | 'APP'>('LANDING'); // Par défaut : Site Web Vitrine
   const [authData, setAuthData] = useState<any>(null);
 
   // Fil des publications partagé entre prestataires et clients
@@ -103,20 +104,34 @@ export function App() {
       {/* Barre de navigation rapide interactive pour basculer facilement */}
       <div className="bg-slate-900 text-white text-[11px] font-semibold py-2 px-4 text-center border-b border-slate-800">
         <div className="max-w-4xl mx-auto flex items-center justify-center gap-3 flex-wrap">
-          <span className="text-slate-400">Accès Direct :</span>
+          <span className="text-slate-400">Navigation Rapide :</span>
 
-          {/* Bouton pour revenir au Formulaire d'inscription */}
+          {/* Bouton Site Web Vitrine */}
           <button
-            onClick={() => handleLogout()}
+            onClick={() => setViewMode('LANDING')}
             className={`px-3 py-1 rounded-xl transition ${
-              !user ? 'bg-brand-600 text-white font-black shadow-xs ring-2 ring-white/20' : 'bg-slate-800 text-slate-300'
+              viewMode === 'LANDING' ? 'bg-amber-500 text-slate-950 font-black shadow-xs' : 'bg-slate-800 text-slate-300'
+            }`}
+          >
+            🌐 Site Web Vitrine
+          </button>
+
+          {/* Bouton pour aller à l'Application / Inscription */}
+          <button
+            onClick={() => {
+              setViewMode('APP');
+              handleLogout();
+            }}
+            className={`px-3 py-1 rounded-xl transition ${
+              viewMode === 'APP' && !user ? 'bg-brand-600 text-white font-black shadow-xs ring-2 ring-white/20' : 'bg-slate-800 text-slate-300'
             }`}
           >
             Formulaire d'Inscription
           </button>
 
           <button
-            onClick={() =>
+            onClick={() => {
+              setViewMode('APP');
               handleAuthSuccess({
                 accessToken: 'demo_token_client',
                 user: {
@@ -130,17 +145,18 @@ export function App() {
                   role: 'CLIENT',
                   clientTrialExpiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
                 },
-              })
-            }
+              });
+            }}
             className={`px-3 py-1 rounded-xl transition ${
-              user?.role === 'CLIENT' ? 'bg-brand-600 text-white font-black shadow-xs' : 'bg-slate-800 text-slate-300'
+              viewMode === 'APP' && user?.role === 'CLIENT' ? 'bg-brand-600 text-white font-black shadow-xs' : 'bg-slate-800 text-slate-300'
             }`}
           >
-            Vue Client (Profil, Prestataires & Pubs)
+            Vue Client
           </button>
 
           <button
-            onClick={() =>
+            onClick={() => {
+              setViewMode('APP');
               handleAuthSuccess({
                 accessToken: 'demo_token_prov',
                 user: {
@@ -160,22 +176,25 @@ export function App() {
                     receivesOnSite: true,
                     travelRequired: true,
                     travelFee: 2500,
+                    basePrice: 15000,
+                    pricingUnit: 'par prestation',
                     whatsappNumber: '+2250701020304',
                     directPhoneNumber: '+2250701020304',
                     subscriptionExpiresAt: new Date(Date.now() + 25 * 24 * 3600 * 1000).toISOString(),
                   },
                 },
-              })
-            }
+              });
+            }}
             className={`px-3 py-1 rounded-xl transition ${
-              user?.role === 'PROVIDER' ? 'bg-brand-600 text-white font-black shadow-xs' : 'bg-slate-800 text-slate-300'
+              viewMode === 'APP' && user?.role === 'PROVIDER' ? 'bg-brand-600 text-white font-black shadow-xs' : 'bg-slate-800 text-slate-300'
             }`}
           >
-            Vue Prestataire (Photo, Publications & Clients En Ligne)
+            Vue Prestataire
           </button>
 
           <button
-            onClick={() =>
+            onClick={() => {
+              setViewMode('APP');
               handleAuthSuccess({
                 accessToken: 'demo_token_admin',
                 user: {
@@ -183,55 +202,71 @@ export function App() {
                   email: 'direction@servicerapide.africa',
                   role: 'ADMIN',
                 },
-              })
-            }
+              });
+            }}
             className={`px-3 py-1 rounded-xl transition ${
-              user?.role === 'ADMIN' ? 'bg-brand-600 text-white font-black shadow-xs' : 'bg-slate-800 text-slate-300'
+              viewMode === 'APP' && user?.role === 'ADMIN' ? 'bg-brand-600 text-white font-black shadow-xs' : 'bg-slate-800 text-slate-300'
             }`}
           >
-            Vue Admin (Remboursements Manuels)
+            Vue Admin
           </button>
         </div>
       </div>
 
       <main className="flex-1">
-        {!user && (
-          <AuthView
-            country={country}
-            language={language}
-            onSuccess={handleAuthSuccess}
+        {/* SITE WEB VITRINE COMPLET */}
+        {viewMode === 'LANDING' ? (
+          <LandingPage
+            onStart={(initialRole) => {
+              setViewMode('APP');
+              handleLogout();
+            }}
           />
-        )}
+        ) : (
+          /* APPLICATION WEB COMPLETE */
+          <>
+            {!user && (
+              <AuthView
+                country={country}
+                language={language}
+                onSuccess={(data) => {
+                  handleAuthSuccess(data);
+                  setViewMode('APP');
+                }}
+              />
+            )}
 
-        {user && user.role === 'PENDING' && (
-          <RoleSelectionModal
-            token={token}
-            onRoleChosen={handleRoleChosen}
-          />
-        )}
+            {user && user.role === 'PENDING' && (
+              <RoleSelectionModal
+                token={token}
+                onRoleChosen={handleRoleChosen}
+              />
+            )}
 
-        {user && user.role === 'PROVIDER' && (
-          <ProviderDashboard
-            user={user}
-            token={token}
-            posts={posts}
-            onAddPost={handleAddPost}
-          />
-        )}
+            {user && user.role === 'PROVIDER' && (
+              <ProviderDashboard
+                user={user}
+                token={token}
+                posts={posts}
+                onAddPost={handleAddPost}
+              />
+            )}
 
-        {user && user.role === 'CLIENT' && (
-          <ClientView
-            user={user}
-            token={token}
-            country={country}
-            posts={posts}
-            onAddPost={handleAddPost}
-            onUpdateUser={handleUpdateUser}
-          />
-        )}
+            {user && user.role === 'CLIENT' && (
+              <ClientView
+                user={user}
+                token={token}
+                country={country}
+                posts={posts}
+                onAddPost={handleAddPost}
+                onUpdateUser={handleUpdateUser}
+              />
+            )}
 
-        {user && user.role === 'ADMIN' && (
-          <AdminDashboard token={token} />
+            {user && user.role === 'ADMIN' && (
+              <AdminDashboard token={token} />
+            )}
+          </>
         )}
       </main>
 

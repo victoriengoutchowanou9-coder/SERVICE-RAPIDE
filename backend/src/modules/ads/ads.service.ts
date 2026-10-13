@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Advertisement } from '../../../entities';
+import { Advertisement } from '../../entities';
 
 @Injectable()
 export class AdsService {

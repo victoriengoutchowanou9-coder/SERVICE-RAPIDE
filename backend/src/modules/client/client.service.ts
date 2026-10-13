@@ -1,8 +1,8 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
-import { ProviderProfile, User, ContactUnlock, Payment, RefundRequest } from '../../../entities';
-import { AvailabilityStatus, PaymentType, PaymentStatus, PaymentMethod, RefundStatus } from '../../../common/enums';
+import { ProviderProfile, User, ContactUnlock, Payment, RefundRequest } from '../../entities';
+import { AvailabilityStatus, PaymentType, PaymentStatus, PaymentMethod, RefundStatus } from '../../common/enums';
 import { FilterProvidersDto } from './dto/client.dto';
 
 @Injectable()

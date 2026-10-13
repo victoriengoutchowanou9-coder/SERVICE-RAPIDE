@@ -1,31 +1,77 @@
-import { IsEmail, IsNotEmpty, MinLength, IsOptional, IsString } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  MinLength,
+  IsOptional,
+  IsString,
+  Matches,
+  Length,
+} from 'class-validator';
 
 export class AuthCredentialsDto {
-  @IsEmail({}, { message: 'Adresse email invalide' })
-  @IsNotEmpty({ message: "L'email est requis" })
+  // Contrôle strict côté serveur du format email
+  @IsNotEmpty({ message: "L'adresse email est requise." })
+  @IsEmail(
+    { allow_utf8_local_part: false, require_tld: true },
+    { message: 'Format email invalide. Veuillez fournir une adresse email valide (ex: utilisateur@domaine.com).' },
+  )
+  @Matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, {
+    message: "Le format de l'adresse email n'est pas conforme.",
+  })
   email: string;
 
-  @IsNotEmpty({ message: 'Le mot de passe est requis' })
-  @MinLength(6, { message: 'Le mot de passe doit comporter au moins 6 caractères' })
+  // Contrôle strict côté serveur de la taille du mot de passe (8 caractères minimum)
+  @IsNotEmpty({ message: 'Le mot de passe est obligatoire.' })
+  @MinLength(8, {
+    message: 'Le mot de passe doit comporter au moins 8 caractères.',
+  })
   password: string;
 
   @IsOptional()
   @IsString()
-  countryCode?: string; // Ex: 'SN', 'CI', 'BJ', 'CM'
+  firstName?: string;
 
   @IsOptional()
   @IsString()
-  preferredLanguage?: string; // Ex: 'fr', 'en', 'ar', 'pt', 'sw'
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
+
+  @IsOptional()
+  @IsString()
+  preferredLanguage?: string;
+}
+
+export class VerifyOtpDto {
+  @IsNotEmpty({ message: "L'email est requis" })
+  @IsEmail({}, { message: 'Format email invalide' })
+  email: string;
+
+  @IsNotEmpty({ message: 'Le code OTP est requis' })
+  @Length(6, 6, { message: 'Le code OTP doit comporter exactement 6 chiffres' })
+  @Matches(/^[0-9]{6}$/, { message: 'Le code OTP doit être composé de 6 chiffres' })
+  otp: string;
+}
+
+export class ResendOtpDto {
+  @IsNotEmpty({ message: "L'email est requis" })
+  @IsEmail({}, { message: 'Format email invalide' })
+  email: string;
 }
 
 export class ChooseRoleDto {
   @IsNotEmpty({ message: 'Le rôle est requis' })
   role: 'CLIENT' | 'PROVIDER';
 
-  // Si le rôle est PRESTATAIRE, champs initiaux du profil
   @IsOptional()
   @IsString()
-  singleName?: string; // Un seul nom visible
+  singleName?: string;
 
   @IsOptional()
   @IsString()

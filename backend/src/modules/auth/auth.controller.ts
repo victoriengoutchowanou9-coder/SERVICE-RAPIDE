@@ -1,6 +1,20 @@
-import { Controller, Post, Body, Get, UseGuards, Request, Patch } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Request,
+  Patch,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthCredentialsDto, ChooseRoleDto, UpdateUserPreferencesDto } from './dto/auth.dto';
+import {
+  AuthCredentialsDto,
+  ChooseRoleDto,
+  UpdateUserPreferencesDto,
+  VerifyOtpDto,
+  ResendOtpDto,
+} from './dto/auth.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AFRICAN_COUNTRIES, SUPPORTED_LANGUAGES } from '../../common/constants/countries';
 
@@ -9,7 +23,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   /**
-   * 1. AUTHENTIFICATION: Une seule interface de connexion et d'inscription réunies
+   * 1. Interface de connexion & Inscription (avec Rate Limiting 4 req/min/IP)
    */
   @Post('login-or-register')
   async loginOrRegister(@Body() dto: AuthCredentialsDto) {
@@ -17,7 +31,23 @@ export class AuthController {
   }
 
   /**
-   * 1. Après l'inscription, l'utilisateur choisit son rôle : Client ou Prestataire
+   * 2. Validation OTP (Activation du compte)
+   */
+  @Post('verify-otp')
+  async verifyOtp(@Body() dto: VerifyOtpDto) {
+    return this.authService.verifyOtp(dto);
+  }
+
+  /**
+   * 3. Renvoyer un code OTP
+   */
+  @Post('resend-otp')
+  async resendOtp(@Body() dto: ResendOtpDto) {
+    return this.authService.resendOtp(dto);
+  }
+
+  /**
+   * 4. Choix du rôle après inscription
    */
   @UseGuards(JwtAuthGuard)
   @Post('choose-role')
@@ -25,27 +55,18 @@ export class AuthController {
     return this.authService.chooseRole(req.user.id, dto);
   }
 
-  /**
-   * 1. Section de choix de la langue et du pays
-   */
   @UseGuards(JwtAuthGuard)
   @Patch('preferences')
   async updatePreferences(@Request() req, @Body() dto: UpdateUserPreferencesDto) {
     return this.authService.updatePreferences(req.user.id, dto);
   }
 
-  /**
-   * Profil utilisateur connecté
-   */
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Request() req) {
     return this.authService.getMe(req.user.id);
   }
 
-  /**
-   * Référentiel des pays africains et langues supportées
-   */
   @Get('meta-geo')
   getMetaGeo() {
     return {

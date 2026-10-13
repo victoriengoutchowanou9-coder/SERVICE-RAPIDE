@@ -49,6 +49,16 @@ export class User {
   @Column({ default: 'fr' })
   preferredLanguage: string; // Ex: fr, en, ar, pt, sw
 
+  // Gestion de l'activation utilisateur et OTP
+  @Column({ default: false })
+  isActive: boolean; // Vérifié par middleware sur chaque requête
+
+  @Column({ nullable: true })
+  otpCode: string; // Code OTP à 6 chiffres
+
+  @Column({ type: 'timestamp', nullable: true })
+  otpExpiresAt: Date;
+
   // Pour les clients : fin de la période d'essai gratuit (1 semaine offerte)
   @Column({ type: 'timestamp', nullable: true })
   clientTrialExpiresAt: Date;

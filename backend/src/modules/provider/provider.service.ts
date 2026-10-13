@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
-import { ProviderProfile, User } from '../../../entities';
-import { AvailabilityStatus, UserRole } from '../../../common/enums';
+import { ProviderProfile, User } from '../../entities';
+import { AvailabilityStatus, UserRole } from '../../common/enums';
 import { UpdateAvailabilityDto, UpdateProviderProfileDto } from './dto/provider.dto';
 
 @Injectable()

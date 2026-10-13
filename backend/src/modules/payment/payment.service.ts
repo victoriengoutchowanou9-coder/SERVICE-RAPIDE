@@ -1,8 +1,8 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Payment, ProviderProfile, User } from '../../../entities';
-import { PaymentType, PaymentStatus, PaymentMethod } from '../../../common/enums';
+import { Payment, ProviderProfile, User } from '../../entities';
+import { PaymentType, PaymentStatus, PaymentMethod } from '../../common/enums';
 
 @Injectable()
 export class PaymentService {

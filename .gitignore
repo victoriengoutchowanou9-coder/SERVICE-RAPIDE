@@ -5,11 +5,17 @@ build/
 .npm/
 .yarn/
 
-# Environnement et secrets
+# Environnement et secrets (Clés privées, service role, etc.)
 .env
 .env.local
 .env.*.local
+*.local
 *.log
+
+# Protection absolue des clés Supabase Service Role
+SUPABASE_SERVICE_ROLE_KEY
+*service_role*
+*.secret*
 
 # Logs & temporaires
 npm-debug.log*

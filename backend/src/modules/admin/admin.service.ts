@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User, ProviderProfile, Payment, RefundRequest, Advertisement, SystemSetting } from '../../../entities';
-import { RefundStatus, PaymentStatus } from '../../../common/enums';
+import { User, ProviderProfile, Payment, RefundRequest, Advertisement, SystemSetting } from '../../entities';
+import { RefundStatus, PaymentStatus } from '../../common/enums';
 
 @Injectable()
 export class AdminService {

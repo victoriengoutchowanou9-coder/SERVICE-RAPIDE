@@ -24,7 +24,6 @@ import {
   Tag,
   ShieldAlert,
 } from 'lucide-react';
-import { ConnectedClientsWidget } from './ConnectedClientsWidget';
 import { FeedPosts } from './FeedPosts';
 import { AdsSection } from './AdsSection';
 import { PostItem, ServiceRequest, ReviewItem } from '../types';
@@ -315,7 +314,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                     isSubActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
                   }`}
                 >
-                  {isSubActive ? 'Actif & Visible en Ligne' : 'Expiré (Profil Masqué)'}
+                  {isSubActive ? 'Actif & Profil Visible' : 'Expiré (Profil Masqué)'}
                 </span>
               </div>
               <p className="text-sm font-bold text-slate-900 mt-0.5">
@@ -1114,8 +1113,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
       {/* ONGLET 4 : FIL D'ACTUALITÉ & CLIENTS CONNECTÉS */}
       {activeSubTab === 'FEED' && (
         <div className="space-y-6">
-          <ConnectedClientsWidget />
-
+          
           <div className="space-y-3">
             <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
               Publications & Réalisations

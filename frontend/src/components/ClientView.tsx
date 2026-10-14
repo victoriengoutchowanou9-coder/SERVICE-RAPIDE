@@ -412,7 +412,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
               alt="Profil Client"
               className="w-12 h-12 rounded-2xl object-cover ring-2 ring-brand-500/30"
             />
-            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" />
           </div>
           <div>
             <h3 className="text-sm font-black text-slate-900">
@@ -647,12 +646,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
                             alt={item.singleName}
                             className="w-14 h-14 rounded-2xl object-cover ring-2 ring-slate-100 shadow-xs"
                           />
-                          {item.isOnline && (
-                            <span
-                              className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"
-                              title="En ligne"
-                            />
-                          )}
                         </div>
 
                         <div>
@@ -661,11 +654,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
                             <h4 className="text-sm font-black text-slate-900">
                               {isUnlocked && item.contact.fullName ? item.contact.fullName : item.singleName}
                             </h4>
-                            {item.isOnline && (
-                              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                                En ligne
-                              </span>
-                            )}
                           </div>
                           <p className="text-xs font-bold text-brand-600 mt-0.5">{item.serviceOffered}</p>
                         </div>

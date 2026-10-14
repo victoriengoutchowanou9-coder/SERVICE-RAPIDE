@@ -40,21 +40,37 @@ export const LANGUAGES = [
   { code: 'sw', label: 'Kiswahili', flag: '🇹🇿' },
 ];
 
+export interface ReviewItem {
+  id: string;
+  clientName: string;
+  rating: number; // 1 à 5
+  comment: string;
+  date: string;
+}
+
 export interface ProviderItem {
   id: string;
   singleName: string;
   photoUrl?: string; // Photo de profil du prestataire
   serviceOffered: string;
+  skills?: string[]; // Compétences détaillées
   city: string;
   department: string;
+  interventionZones?: string[]; // Zones d'intervention précises
   availability: 'AVAILABLE' | 'BUSY';
-  isOnline?: boolean; // Connecté en ligne
+  isOnline?: boolean;
   receivesOnSite: boolean;
   travelRequired: boolean;
   travelFee: number;
-  // Tarif du prestataire visible par les clients avant contact
+  // Tarif estimé
   basePrice: number;
   pricingUnit: string;
+  // Réputation & Activité
+  rating: number; // Ex: 4.9
+  reviewsCount: number;
+  completedMissions: number; // Nombre de missions réalisées
+  reviews?: ReviewItem[];
+  // Contact
   isContactUnlocked: boolean;
   unlockId: string | null;
   refundStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
@@ -63,6 +79,26 @@ export interface ProviderItem {
     whatsappNumber: string;
     fullName?: string;
   };
+}
+
+export interface ServiceRequest {
+  id: string;
+  clientId: string;
+  clientName: string;
+  clientPhone: string;
+  clientAvatar?: string;
+  providerId: string;
+  providerSingleName: string;
+  serviceTitle: string;
+  description: string;
+  mode: 'IMMEDIATE' | 'SCHEDULED'; // Maintenant ou Programmer
+  scheduledDateTime?: string; // Si programmé
+  location: string;
+  estimatedPrice: number;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COMPLETED' | 'PAID';
+  paymentMethod?: string;
+  createdAt: string;
+  hasBeenRated?: boolean;
 }
 
 export interface ClientItem {
@@ -84,8 +120,8 @@ export interface PostItem {
   authorPhotoUrl?: string;
   authorService: string;
   city: string;
-  department?: string; // Localisation précise (Commune / Quartier)
-  mapLocationHint?: string; // Ex: "Cocody Riviera 2 • À 1.8 km"
+  department?: string;
+  mapLocationHint?: string;
   content: string;
   imageUrl?: string;
   likesCount: number;

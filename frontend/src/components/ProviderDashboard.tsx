@@ -139,9 +139,6 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   const expiresDate = new Date(profile.subscriptionExpiresAt);
   const isSubActive = expiresDate > new Date();
 
-  // Avis du prestataire
-  const mockReviews: ReviewItem[] = profile.reviews || [];
-
   // Basculer la disponibilité en 1 clic
   const toggleAvailability = async () => {
     const newStatus = isAvailable ? 'BUSY' : 'AVAILABLE';

@@ -29,8 +29,6 @@ import { ProviderItem, PostItem, ServiceRequest } from '../types';
 import { AdsSection } from './AdsSection';
 import { FeedPosts } from './FeedPosts';
 import { ClientProfileModal } from './ClientProfileModal';
-import { BookingModal } from './BookingModal';
-import { ReviewsModal } from './ReviewsModal';
 import { SupportModal } from './SupportModal';
 
 interface ClientViewProps {
@@ -63,8 +61,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
   const [showSupportModal, setShowSupportModal] = useState(false);
 
   // Modales d'action
-  const [bookingProvider, setBookingProvider] = useState<ProviderItem | null>(null);
-  const [reviewsProvider, setReviewsProvider] = useState<ProviderItem | null>(null);
   const [unlockModalProvider, setUnlockModalProvider] = useState<ProviderItem | null>(null);
   const [refundModalItem, setRefundModalItem] = useState<ProviderItem | null>(null);
   const [refundReason, setRefundReason] = useState('');
@@ -778,17 +774,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
                     </div>
 
                     <div className="flex flex-col gap-2 w-full sm:w-auto">
-                      {providerTarget && (
-                        <button
-                          type="button"
-                          onClick={() => setReviewsProvider(providerTarget)}
-                          className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5"
-                        >
-                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                          <span>Noter le prestataire</span>
-                        </button>
-                      )}
-
                       <button
                         type="button"
                         onClick={() => setShowSupportModal(true)}
@@ -823,26 +808,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
         <div className="space-y-4">
           <AdsSection />
         </div>
-      )}
-
-      {/* Modal Réservation Immédiate ou Programmée */}
-      {bookingProvider && (
-        <BookingModal
-          provider={bookingProvider}
-          client={user}
-          onClose={() => setBookingProvider(null)}
-          onSubmitRequest={handleBookingSubmit}
-        />
-      )}
-
-      {/* Modal Avis & Évaluation */}
-      {reviewsProvider && (
-        <ReviewsModal
-          provider={reviewsProvider}
-          onClose={() => setReviewsProvider(null)}
-          onSubmitReview={handleReviewSubmit}
-          canReview={true}
-        />
       )}
 
       {/* Modal Support 24/7 */}

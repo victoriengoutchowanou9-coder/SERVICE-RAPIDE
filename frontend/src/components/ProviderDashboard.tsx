@@ -27,7 +27,7 @@ import {
 import { FeedPosts } from './FeedPosts';
 import { AdsSection } from './AdsSection';
 import { PostItem, ServiceRequest, ReviewItem } from '../types';
-import { API_BASE_URL } from '../config/api';
+import { supabaseBackend } from '../config/supabase';
 
 interface ProviderDashboardProps {
   user: any;
@@ -172,14 +172,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
     if (onUpdateProviderProfile) onUpdateProviderProfile(updated);
 
     try {
-      await fetch(`${API_BASE_URL}/provider/availability`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ availability: newStatus }),
-      });
+      await supabaseBackend.updateAvailability(user?.id, newStatus);
     } catch {}
 
     setSuccessMsg(`Statut mis à jour : ${newStatus === 'AVAILABLE' ? '🟢 Disponible pour missions' : '🔴 Actuellement Occupé'}`);
@@ -246,14 +239,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
     if (onUpdateProviderProfile) onUpdateProviderProfile(profile);
 
     try {
-      await fetch(`${API_BASE_URL}/provider/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(profile),
-      });
+      await supabaseBackend.updateProviderProfile(user?.id, profile);
     } catch {}
 
     setSuccessMsg('Profil professionnel, tarifs et zones d’intervention enregistrés avec succès !');

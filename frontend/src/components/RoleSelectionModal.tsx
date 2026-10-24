@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Briefcase, Sparkles, Check, ArrowRight } from 'lucide-react';
-import { API_BASE_URL } from '../config/api';
+import { supabaseBackend } from '../config/supabase';
 
 interface RoleSelectionModalProps {
   onRoleChosen: (roleData: any) => void;
@@ -36,15 +36,7 @@ export const RoleSelectionModal: React.FC<RoleSelectionModalProps> = ({
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/choose-role`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+      const data = await supabaseBackend.chooseRole(token, payload);
       onRoleChosen({ role: selectedRole, details: data });
     } catch {
       // Fallback local

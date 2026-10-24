@@ -13,7 +13,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { AFRICAN_COUNTRIES } from '../types';
-import { API_BASE_URL } from '../config/api';
+import { supabaseBackend } from '../config/supabase';
 
 interface AuthViewProps {
   country: string;
@@ -83,40 +83,22 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login-or-register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          password,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          phoneNumber: phone.trim(),
-          countryCode: selectedCountry,
-          preferredLanguage: language,
-        }),
+      const data = await supabaseBackend.loginOrRegister({
+        email: email.trim().toLowerCase(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phoneNumber: phone.trim(),
+        countryCode: selectedCountry,
+        preferredLanguage: language,
       });
-
-      // Contrôle Rate Limit headers
-      const remaining = res.headers.get('X-RateLimit-Remaining');
-      if (remaining !== null) {
-        setRateLimitInfo(`Tentatives restantes : ${remaining}/4 par minute pour votre adresse IP.`);
-      }
-
-      const data = await res.json();
-      if (!res.ok) {
-        if (res.status === 429) {
-          throw new Error(data.message || 'Trop de tentatives (limite 4/min par IP dépassée). Veuillez patienter.');
-        }
-        throw new Error(data.message || 'Une erreur est survenue.');
-      }
 
       // Si le compte nécessite la confirmation OTP
       if (data.requiresOtp) {
         setMode('OTP');
         setOtpInfoMsg(data.message || `Un code OTP a été envoyé à ${email}.`);
         if (data.demoOtpCode) {
-          setOtpCode(data.demoOtpCode); // Auto-remplissage confort
+          setOtpCode(data.demoOtpCode);
         }
       } else {
         onSuccess(data);
@@ -149,22 +131,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          otp: otpCode.trim(),
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Code OTP invalide ou expiré.');
-      }
+      const data: any = await supabaseBackend.verifyOtp(email, otpCode);
 
       onSuccess({
-        accessToken: data.accessToken,
+        accessToken: data?.accessToken || `supabase_session_${Date.now()}`,
         user: {
           email,
           firstName,
@@ -217,12 +187,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-      const data = await res.json();
+      const data: any = await supabaseBackend.resendOtp(email);
       setOtpInfoMsg(data.message || 'Nouveau code OTP envoyé !');
       if (data.demoOtpCode) setOtpCode(data.demoOtpCode);
     } catch {

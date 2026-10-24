@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { LandingPage } from './components/LandingPage';
 import { AuthView } from './components/AuthView';
@@ -7,6 +7,7 @@ import { ProviderDashboard } from './components/ProviderDashboard';
 import { ClientView } from './components/ClientView';
 import { AdminDashboard } from './components/AdminDashboard';
 import { PostItem, ProviderItem, ServiceRequest } from './types';
+import { supabase, supabaseBackend } from './config/supabase';
 
 export function App() {
   const [country, setCountry] = useState('CI');
@@ -22,6 +23,42 @@ export function App() {
 
   // Demandes de services partagées (Maintenant + Programmer)
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
+
+  // Écoute automatique des liens de confirmation d'email et sessions actives Supabase
+  useEffect(() => {
+    // 1. Écoute les événements d'authentification (ex: clic sur le lien de confirmation reçu par email)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const fullAuthData = await supabaseBackend.buildSessionUser(session);
+        if (fullAuthData) {
+          setAuthData(fullAuthData);
+          setViewMode('APP'); // Ouvre directement l'application !
+          // Nettoie l'URL des tokens pour une adresse propre
+          if (typeof window !== 'undefined' && window.location.hash) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setAuthData(null);
+      }
+    });
+
+    // 2. Vérifie si une session est déjà enregistrée dans le navigateur
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const fullAuthData = await supabaseBackend.buildSessionUser(session);
+        if (fullAuthData) {
+          setAuthData(fullAuthData);
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const handleAddPost = (newPostData: Partial<PostItem>) => {
     const post: PostItem = {
@@ -115,7 +152,12 @@ export function App() {
     }));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      // Ignorer si déjà déconnecté
+    }
     setAuthData(null);
   };
 

@@ -193,15 +193,20 @@ export const AuthView: React.FC<AuthViewProps> = ({
         {mode === 'OTP' ? (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             {otpInfoMsg && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{otpInfoMsg}</span>
+              <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs rounded-2xl flex flex-col gap-2">
+                <div className="flex items-center gap-2 font-black text-emerald-800">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Email de confirmation envoyé !</span>
+                </div>
+                <p className="text-[11px] text-emerald-700 leading-relaxed font-semibold">
+                  👉 <strong>Connexion automatique :</strong> Cliquez simplement sur le lien reçu dans votre email pour vous connecter directement sans avoir à taper de code.
+                </p>
               </div>
             )}
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Code OTP (6 chiffres) *
+                Ou entrez le code de confirmation (6 chiffres) si vous préférez :
               </label>
               <div className="relative">
                 <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />

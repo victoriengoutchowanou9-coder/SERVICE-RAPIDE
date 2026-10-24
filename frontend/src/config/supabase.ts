@@ -91,11 +91,18 @@ export const supabaseBackend = {
       };
     }
 
+    // Origine dynamique pour le lien de confirmation (évite la redirection vers localhost)
+    const currentOrigin =
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : 'https://servicerapide.vercel.app';
+
     // Inscription automatique si l'utilisateur n'existe pas
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: currentOrigin,
         data: {
           firstName: payload.firstName,
           lastName: payload.lastName,
@@ -159,20 +166,65 @@ export const supabaseBackend = {
   },
 
   /**
-   * 3. Renvoyer un code OTP
+   * 3. Renvoyer un code OTP / lien de confirmation
    */
   async resendOtp(email: string) {
     if (!isSupabaseConfigured) {
       throw new Error("Configuration Supabase manquante.");
     }
 
+    const currentOrigin =
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : 'https://servicerapide.vercel.app';
+
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: email.trim().toLowerCase(),
+      options: {
+        emailRedirectTo: currentOrigin,
+      },
     });
 
     if (error) throw new Error(error.message);
-    return { message: 'Nouveau code OTP envoyé par email' };
+    return { message: 'Nouveau lien et code de confirmation envoyés par email' };
+  },
+
+  /**
+   * Construit la session complète lors d'un clic sur le lien de confirmation d'email
+   */
+  async buildSessionUser(session: any) {
+    if (!session?.user) return null;
+
+    const { data: profile } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    const { data: providerProfile } = await supabase
+      .from('provider_profiles')
+      .select('*')
+      .eq('userId', session.user.id)
+      .maybeSingle();
+
+    return {
+      accessToken: session.access_token || '',
+      isNewUser: false,
+      requiresOtp: false,
+      message: 'Connexion automatique réussie',
+      user: {
+        id: session.user.id,
+        email: session.user.email,
+        firstName: profile?.firstName || session.user.user_metadata?.firstName || '',
+        lastName: profile?.lastName || session.user.user_metadata?.lastName || '',
+        role: profile?.role || 'PENDING',
+        countryCode: profile?.countryCode || session.user.user_metadata?.countryCode || 'CI',
+        preferredLanguage: profile?.preferredLanguage || session.user.user_metadata?.preferredLanguage || 'fr',
+        providerProfile: providerProfile || null,
+        clientTrialExpiresAt: profile?.clientTrialExpiresAt,
+      },
+    };
   },
 
   /**

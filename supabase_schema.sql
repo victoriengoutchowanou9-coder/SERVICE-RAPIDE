@@ -171,10 +171,3 @@ VALUES
     ('CLIENT_CONTACT_PRICE', '1000', 'Prix de mise en contact client en FCFA'),
     ('CLIENT_FREE_TRIAL_DAYS', '7', 'Semaine gratuite offerte au nouveau client')
 ON CONFLICT ("settingKey") DO NOTHING;
-
--- 12. INSERTION DE PUBLICITES PANAFRICAINES INITIALES
-INSERT INTO advertisements (title, content, "imageUrl", "targetUrl", "targetCountryCode", "isActive")
-VALUES
-    ('Outillage Pro Bosch & Total Afrique', 'Jusqu’à -25% sur perceuses, meuleuses et groupes électrogènes livrés dans 15 capitales africaines.', 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80', 'https://example.com/bosch', 'ALL', TRUE),
-    ('Wave & Orange Money Pro', '0% de frais sur vos 10 premiers encaissements de prestations avec le compte Pro.', 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=800&q=80', 'https://example.com/momo', 'ALL', TRUE)
-ON CONFLICT DO NOTHING;

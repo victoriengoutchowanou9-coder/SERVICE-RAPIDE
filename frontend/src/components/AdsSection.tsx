@@ -2,35 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, ExternalLink, Megaphone } from 'lucide-react';
 import { AdItem } from '../types';
 
-export const ADS_DATA: AdItem[] = [
-  {
-    id: 'ad-1',
-    title: 'Outillage Pro Bosch & Total Afrique',
-    content: 'Jusqu’à -25% sur perceuses, meuleuses et groupes électrogènes livrés dans 15 capitales africaines.',
-    imageUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-    advertiser: 'Bosch Professional Afrique',
-    tag: 'Sponsorisé • Outillage',
-    targetUrl: 'https://example.com/bosch-promo',
-  },
-  {
-    id: 'ad-2',
-    title: 'Wave & Orange Money : Encaissez vos clients instantanément',
-    content: '0% de frais sur vos 10 premiers encaissements de prestations avec le compte Pro.',
-    imageUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=800&q=80',
-    advertiser: 'Mobile Money Pro',
-    tag: 'Sponsorisé • Finance',
-    targetUrl: 'https://example.com/momo-promo',
-  },
-  {
-    id: 'ad-3',
-    title: 'Assurance Sanlam Intervention Chantier & Atelier',
-    content: 'Protégez votre travail et couvrez vos clients en cas d’accident technique dès 2 000 FCFA/mois.',
-    imageUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80',
-    advertiser: 'Sanlam Assurance',
-    tag: 'Sponsorisé • Protection',
-    targetUrl: 'https://example.com/sanlam-promo',
-  },
-];
+export const ADS_DATA: AdItem[] = [];
 
 export const AdsSection: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const [ads, setAds] = useState<AdItem[]>(ADS_DATA);
@@ -88,7 +60,14 @@ export const AdsSection: React.FC<{ compact?: boolean }> = ({ compact = false })
       </div>
 
       <div className={`grid gap-3 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'}`}>
-        {ads.map((ad) => (
+        {ads.length === 0 ? (
+          <div className="col-span-full p-8 bg-white rounded-2xl border border-dashed border-slate-200 text-center text-slate-400">
+            <Megaphone className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+            <p className="text-xs font-bold text-slate-600">Aucune publicité active pour le moment.</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Les offres de nos partenaires et publications sponsorisées apparaîtront ici.</p>
+          </div>
+        ) : (
+          ads.map((ad) => (
           <div
             key={ad.id}
             className="group relative bg-white rounded-2xl overflow-hidden border border-slate-200/90 shadow-xs hover:shadow-md transition flex flex-col justify-between"
@@ -130,7 +109,7 @@ export const AdsSection: React.FC<{ compact?: boolean }> = ({ compact = false })
               </a>
             </div>
           </div>
-        ))}
+        )))}
       </div>
 
       {/* Modal Créer une publicité */}

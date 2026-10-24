@@ -50,27 +50,27 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
 }) => {
   const [profile, setProfile] = useState<any>(
     user.providerProfile || {
-      id: 'prov-1',
-      singleName: 'Mamadou',
-      fullName: 'Mamadou Traoré',
-      photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-      serviceOffered: 'Climatisation & Froid',
-      skills: ['Split Inverter', 'Recharge Gaz R410', 'Chambre froide', 'Dépannage d’urgence'],
-      city: 'Abidjan',
-      department: 'Cocody Riviera',
-      interventionZones: ['Cocody', 'Plateau', 'Riviera', 'Marcory', 'Bingerville'],
+      id: user?.id || 'prov-user',
+      singleName: user?.firstName || 'Professionnel',
+      fullName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Professionnel',
+      photoUrl: user?.avatarUrl || '',
+      serviceOffered: 'Services Spécialisés',
+      skills: [],
+      city: user?.city || 'Abidjan',
+      department: user?.department || 'Centre',
+      interventionZones: [],
       availability: 'AVAILABLE',
       receivesOnSite: true,
-      travelRequired: true,
-      travelFee: 2500,
-      basePrice: 15000,
-      pricingUnit: 'par climatiseur',
-      whatsappNumber: '+2250701020304',
-      directPhoneNumber: '+2250701020304',
-      rating: 4.9,
-      reviewsCount: 38,
-      completedMissions: 84,
-      subscriptionExpiresAt: new Date(Date.now() + 25 * 24 * 3600 * 1000).toISOString(),
+      travelRequired: false,
+      travelFee: 0,
+      basePrice: 5000,
+      pricingUnit: 'par prestation',
+      whatsappNumber: user?.phoneNumber || '',
+      directPhoneNumber: user?.phoneNumber || '',
+      rating: 0,
+      reviewsCount: 0,
+      completedMissions: 0,
+      subscriptionExpiresAt: user?.providerProfile?.subscriptionExpiresAt || new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
     }
   );
 
@@ -140,29 +140,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   const isSubActive = expiresDate > new Date();
 
   // Avis du prestataire
-  const mockReviews: ReviewItem[] = profile.reviews || [
-    {
-      id: 'rev-1',
-      clientName: 'Awa K.',
-      rating: 5,
-      comment: 'Intervention ultra rapide pour mon split inverter à Cocody. Très poli, travail propre et tarif respecté.',
-      date: 'Il y a 2 jours',
-    },
-    {
-      id: 'rev-2',
-      clientName: 'Michel D.',
-      rating: 5,
-      comment: 'Climatisation réparée en moins d’une heure. Je recommande vivement pour son sérieux !',
-      date: 'La semaine dernière',
-    },
-    {
-      id: 'rev-3',
-      clientName: 'Ibrahim S.',
-      rating: 4,
-      comment: 'Arrivé à l’heure convenue pour le rendez-vous programmé à 10h. Très bon travail.',
-      date: 'Il y a 2 semaines',
-    },
-  ];
+  const mockReviews: ReviewItem[] = profile.reviews || [];
 
   // Basculer la disponibilité en 1 clic
   const toggleAvailability = async () => {
@@ -1040,10 +1018,10 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                 <div className="text-center">
                   <div className="flex items-center gap-1 text-2xl font-black text-amber-500">
                     <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
-                    <span>{profile.rating || 4.9}</span>
+                    <span>{profile.rating > 0 ? profile.rating.toFixed(1) : '0.0'}</span>
                   </div>
                   <span className="text-[10px] text-slate-400 font-bold">
-                    Sur {profile.reviewsCount || 38} avis
+                    Sur {profile.reviewsCount || 0} avis
                   </span>
                 </div>
 
@@ -1051,7 +1029,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
 
                 <div className="text-center">
                   <div className="text-2xl font-black text-emerald-600">
-                    {profile.completedMissions || 84}
+                    {profile.completedMissions || 0}
                   </div>
                   <span className="text-[10px] text-slate-400 font-bold">Missions réussies</span>
                 </div>
@@ -1064,7 +1042,14 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                 Derniers avis clients
               </h4>
 
-              {mockReviews.map((rev) => (
+              {mockReviews.length === 0 ? (
+                <div className="p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center text-slate-400">
+                  <Star className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                  <p className="text-xs font-bold text-slate-600">Aucun avis client pour le moment.</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Les évaluations laissées par vos clients après intervention apparaîtront ici.</p>
+                </div>
+              ) : (
+                mockReviews.map((rev) => (
                 <div
                   key={rev.id}
                   className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2"
@@ -1091,7 +1076,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
 
                   <p className="text-xs text-slate-600 italic">« {rev.comment} »</p>
                 </div>
-              ))}
+              )))}
             </div>
           </div>
         </div>

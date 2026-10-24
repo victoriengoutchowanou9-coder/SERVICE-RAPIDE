@@ -81,170 +81,13 @@ export const ClientView: React.FC<ClientViewProps> = ({
   const trialExpires = user.clientTrialExpiresAt ? new Date(user.clientTrialExpiresAt) : null;
   const isTrialActive = trialExpires && trialExpires > new Date();
 
-  // Liste de base des prestataires panafricains
-  const defaultMockProviders: ProviderItem[] = [
-    {
-      id: 'prov-1',
-      singleName: 'Mamadou',
-      photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-      serviceOffered: 'Climatisation & Froid',
-      skills: ['Split Inverter', 'Recharge Gaz R410', 'Chambre froide', 'Dépannage d’urgence'],
-      city: 'Abidjan',
-      department: 'Cocody',
-      interventionZones: ['Cocody', 'Plateau', 'Riviera', 'Marcory', 'Bingerville'],
-      availability: 'AVAILABLE',
-      isOnline: true,
-      receivesOnSite: true,
-      travelRequired: true,
-      travelFee: 2500,
-      basePrice: 15000,
-      pricingUnit: 'par climatiseur',
-      rating: 4.9,
-      reviewsCount: 38,
-      completedMissions: 84,
-      isContactUnlocked: false,
-      unlockId: null,
-      refundStatus: null,
-      contact: { directPhone: '•••••••••• (Masqué)', whatsappNumber: '•••••••••• (Masqué)' },
-      reviews: [
-        {
-          id: 'rev-1',
-          clientName: 'Awa K.',
-          rating: 5,
-          comment: 'Climatiseur réparé en 30 minutes à Cocody Angré. Très professionnel !',
-          date: 'Il y a 2 jours',
-        },
-        {
-          id: 'rev-2',
-          clientName: 'Jean-Marc D.',
-          rating: 5,
-          comment: 'Très sérieux, devis respecté et matériel très propre.',
-          date: 'Il y a 1 semaine',
-        },
-      ],
-    },
-    {
-      id: 'prov-2',
-      singleName: 'Koffi',
-      photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
-      serviceOffered: 'Électricien Bâtiment & Industriel',
-      skills: ['Tableaux électriques', 'Court-circuit', 'Groupe électrogène', 'Domotique'],
-      city: 'Cotonou',
-      department: 'Littoral',
-      interventionZones: ['Cadjehoun', 'Haie Vive', 'Akpakpa', 'Fidjrossè'],
-      availability: 'AVAILABLE',
-      isOnline: true,
-      receivesOnSite: false,
-      travelRequired: true,
-      travelFee: 2000,
-      basePrice: 8000,
-      pricingUnit: 'par intervention',
-      rating: 4.8,
-      reviewsCount: 24,
-      completedMissions: 59,
-      isContactUnlocked: false,
-      unlockId: null,
-      refundStatus: null,
-      contact: { directPhone: '•••••••••• (Masqué)', whatsappNumber: '•••••••••• (Masqué)' },
-    },
-    {
-      id: 'prov-3',
-      singleName: 'Fatou',
-      photoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
-      serviceOffered: 'Coiffure & Esthétique Afro',
-      skills: ['Tresses africaines', 'Nattes collées', 'Locks', 'Maquillage événementiel'],
-      city: 'Dakar',
-      department: 'Almadies',
-      interventionZones: ['Almadies', 'Ngor', 'Ouakam', 'Plateau', 'Mermoz'],
-      availability: 'AVAILABLE',
-      isOnline: true,
-      receivesOnSite: true,
-      travelRequired: false,
-      travelFee: 0,
-      basePrice: 6000,
-      pricingUnit: 'par coiffure',
-      rating: 5.0,
-      reviewsCount: 42,
-      completedMissions: 110,
-      isContactUnlocked: false,
-      unlockId: null,
-      refundStatus: null,
-      contact: { directPhone: '•••••••••• (Masqué)', whatsappNumber: '•••••••••• (Masqué)' },
-    },
-    {
-      id: 'prov-4',
-      singleName: 'Bakary',
-      photoUrl: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=400&q=80',
-      serviceOffered: 'Mécanique Auto & Dépannage Routier',
-      skills: ['Diagnostic valise', 'Freinage', 'Embrayage', 'Remorquage rapide'],
-      city: 'Bamako',
-      department: 'Commune IV',
-      interventionZones: ['Hamdallaye', 'ACI 2000', 'Badalabougou', 'Faladié'],
-      availability: 'BUSY',
-      isOnline: false,
-      receivesOnSite: true,
-      travelRequired: true,
-      travelFee: 4000,
-      basePrice: 12000,
-      pricingUnit: 'par diagnostic',
-      rating: 4.7,
-      reviewsCount: 19,
-      completedMissions: 46,
-      isContactUnlocked: false,
-      unlockId: null,
-      refundStatus: null,
-      contact: { directPhone: '•••••••••• (Masqué)', whatsappNumber: '•••••••••• (Masqué)' },
-    },
-    {
-      id: 'prov-5',
-      singleName: 'Jean',
-      photoUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
-      serviceOffered: 'Plombier Sanitaire Expert',
-      skills: ['Recherche de fuite', 'Chauffe-eau', 'Débouchage express', 'Canalisations'],
-      city: 'Douala',
-      department: 'Bonapriso',
-      interventionZones: ['Bonapriso', 'Akwa', 'Bonanjo', 'Bali'],
-      availability: 'AVAILABLE',
-      isOnline: true,
-      receivesOnSite: false,
-      travelRequired: true,
-      travelFee: 3000,
-      basePrice: 10000,
-      pricingUnit: 'par intervention',
-      rating: 4.9,
-      reviewsCount: 31,
-      completedMissions: 72,
-      isContactUnlocked: false,
-      unlockId: null,
-      refundStatus: null,
-      contact: { directPhone: '•••••••••• (Masqué)', whatsappNumber: '•••••••••• (Masqué)' },
-    },
-  ];
+  // Liste des prestataires enregistrés
+  const defaultMockProviders: ProviderItem[] = [];
 
   const [internalProviders, setInternalProviders] = useState<ProviderItem[]>(defaultMockProviders);
   const currentProviders = externalProviders || internalProviders;
 
-  const [internalRequests, setInternalRequests] = useState<ServiceRequest[]>([
-    {
-      id: 'req-demo-1',
-      clientId: user.id || 'client-1',
-      clientName: `${user.firstName || 'Awa'} ${user.lastName || 'Kouassi'}`.trim(),
-      clientPhone: '+225 07 48 12 34 56',
-      clientAvatar: user.avatarUrl,
-      providerId: 'prov-1',
-      providerSingleName: 'Mamadou',
-      serviceTitle: 'Climatisation & Froid',
-      description: 'Panne split salon : ne souffle plus d’air frais. Urgent.',
-      mode: 'IMMEDIATE',
-      scheduledDateTime: 'Intervention Immédiate (Moins de 45 min)',
-      location: 'Abidjan (Cocody Angré)',
-      estimatedPrice: 17500,
-      status: 'ACCEPTED',
-      paymentMethod: 'ORANGE_MONEY',
-      createdAt: 'Il y a 35 min',
-      hasBeenRated: false,
-    },
-  ]);
+  const [internalRequests, setInternalRequests] = useState<ServiceRequest[]>([]);
 
   const currentRequests = externalRequests || internalRequests;
   const clientRequests = currentRequests.filter(
@@ -617,9 +460,18 @@ export const ClientView: React.FC<ClientViewProps> = ({
             </div>
           </div>
 
-          {/* GRILLE DES PRESTATAIRES AVEC TOUS LES DÉTAILS DEMANDÉS */}
+          {/* GRILLE DES PRESTATAIRES */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filtered.map((item) => {
+            {filtered.length === 0 ? (
+              <div className="col-span-full bg-white rounded-3xl p-10 text-center border border-dashed border-slate-200">
+                <Briefcase className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <h4 className="text-sm font-black text-slate-800">Aucun prestataire disponible pour le moment</h4>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  Dès que des prestataires qualifiés s'inscriront dans votre ville ou pays, ils apparaîtront ici.
+                </p>
+              </div>
+            ) : (
+              filtered.map((item) => {
               const isBusy = item.availability === 'BUSY';
               const isUnlocked = item.isContactUnlocked;
               const estimatedPrice = (item.basePrice || 5000) + (item.travelRequired ? item.travelFee || 0 : 0);
@@ -868,7 +720,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
       )}

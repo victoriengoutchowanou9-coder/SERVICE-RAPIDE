@@ -43,21 +43,7 @@ export const supabaseBackend = {
    */
   async loginOrRegister(payload: AuthPayload) {
     if (!isSupabaseConfigured) {
-      console.warn('Supabase non configuré avec une clé valide. Mode démo local actif.');
-      return {
-        accessToken: 'demo_token_' + Date.now(),
-        isNewUser: true,
-        requiresOtp: true,
-        message: 'Mode démonstration : code OTP simulé 123456',
-        demoOtpCode: '123456',
-        user: {
-          id: 'demo-user-id',
-          email: payload.email,
-          role: 'PENDING',
-          countryCode: payload.countryCode || 'CI',
-          preferredLanguage: payload.preferredLanguage || 'fr',
-        },
-      };
+      throw new Error("Configuration Supabase manquante : veuillez renseigner VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.");
     }
 
     const email = payload.email.toLowerCase().trim();
@@ -143,7 +129,7 @@ export const supabaseBackend = {
    */
   async verifyOtp(email: string, otp: string) {
     if (!isSupabaseConfigured) {
-      return { success: true, message: 'OTP validé (simulation)' };
+      throw new Error("Configuration Supabase manquante.");
     }
 
     const { data, error } = await supabase.auth.verifyOtp({
@@ -171,7 +157,7 @@ export const supabaseBackend = {
    */
   async resendOtp(email: string) {
     if (!isSupabaseConfigured) {
-      return { message: 'Code OTP 654321 simulé renvoyé avec succès', demoOtpCode: '654321' };
+      throw new Error("Configuration Supabase manquante.");
     }
 
     const { error } = await supabase.auth.resend({

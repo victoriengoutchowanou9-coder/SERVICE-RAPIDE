@@ -7,6 +7,7 @@ import {
   MapPin,
   Sparkles,
   MessageCircle,
+  Rss,
 } from 'lucide-react';
 import { PostItem } from '../types';
 
@@ -124,7 +125,16 @@ export const FeedPosts: React.FC<FeedPostsProps> = ({
 
       {/* FIL DES PUBLICATIONS */}
       <div className="space-y-4">
-        {posts.map((post) => {
+        {posts.length === 0 ? (
+          <div className="p-8 bg-white rounded-3xl border border-dashed border-slate-200 text-center text-slate-400 space-y-2">
+            <Rss className="w-8 h-8 mx-auto text-slate-300" />
+            <p className="text-xs font-bold text-slate-600">Aucune publication dans le fil pour le moment.</p>
+            <p className="text-[11px] text-slate-400">
+              Les prestataires peuvent publier leurs réalisations et chantiers terminés ici.
+            </p>
+          </div>
+        ) : (
+          posts.map((post) => {
           const isLiked = likedPosts[post.id];
           const displayLikes = post.likesCount + (isLiked ? 1 : 0);
 
@@ -213,7 +223,7 @@ export const FeedPosts: React.FC<FeedPostsProps> = ({
               </div>
             </article>
           );
-        })}
+        }))}
       </div>
     </div>
   );

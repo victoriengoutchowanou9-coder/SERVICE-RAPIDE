@@ -22,27 +22,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token }) => {
   const [activeTab, setActiveTab] = useState<'METRICS' | 'REFUNDS' | 'SETTINGS' | 'ADS'>('METRICS');
   const [feedback, setFeedback] = useState<string | null>(null);
 
-  // État Réclamations Remboursement (4. VALIDATION STRICTEMENT MANUELLE)
-  const [refundRequests, setRefundRequests] = useState([
-    {
-      id: 'ref-1',
-      clientEmail: 'client.dakar@example.com',
-      providerSingleName: 'Koffi',
-      reason: 'Le prestataire a indiqué ne plus être disponible dans mon secteur.',
-      status: 'PENDING',
-      createdAt: '2026-10-12 14:30',
-      amount: 1000,
-    },
-    {
-      id: 'ref-2',
-      clientEmail: 'client.abidjan@example.com',
-      providerSingleName: 'Bakary',
-      reason: 'Numéro injoignable pendant 24 heures.',
-      status: 'PENDING',
-      createdAt: '2026-10-13 08:15',
-      amount: 1000,
-    },
-  ]);
+  // État Réclamations Remboursement (VALIDATION STRICTEMENT MANUELLE)
+  const [refundRequests, setRefundRequests] = useState<Array<{
+    id: string;
+    clientEmail: string;
+    providerSingleName: string;
+    reason: string;
+    status: string;
+    createdAt: string;
+    amount: number;
+  }>>([]);
 
   // 6. GESTION DES PRIX ET PÉRIODES GRATUITES
   const [settings, setSettings] = useState({
@@ -52,27 +41,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token }) => {
     clientTrialDays: '7',
   });
 
-  // 5. & 6. SECTION PUBLICATION ET PUBLICITÉ
-  const [ads, setAds] = useState([
-    {
-      id: 'ad-1',
-      title: 'Outillage Professionnel Bosch Afrique',
-      content: 'Bénéficiez de 20% de remise sur tous les équipements de chantiers.',
-      targetCountry: 'ALL',
-      isActive: true,
-      views: 1240,
-      clicks: 89,
-    },
-    {
-      id: 'ad-2',
-      title: 'Assurance Chantier & Habitation Sanlam',
-      content: 'Couverture immédiate de vos interventions techniques.',
-      targetCountry: 'CI',
-      isActive: true,
-      views: 540,
-      clicks: 34,
-    },
-  ]);
+  // SECTION PUBLICATION ET PUBLICITÉ
+  const [ads, setAds] = useState<Array<{
+    id: string;
+    title: string;
+    content: string;
+    targetCountry: string;
+    isActive: boolean;
+    views: number;
+    clicks: number;
+  }>>([]);
 
   const [newAdTitle, setNewAdTitle] = useState('');
   const [newAdContent, setNewAdContent] = useState('');
@@ -208,17 +186,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token }) => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
               <span className="text-[11px] font-bold text-slate-400 uppercase">Utilisateurs</span>
-              <p className="text-xl font-black text-slate-900 mt-1">1,480</p>
-              <span className="text-[10px] text-emerald-600 font-bold">+18% cette semaine</span>
+              <p className="text-xl font-black text-slate-900 mt-1">0</p>
+              <span className="text-[10px] text-slate-400 font-bold">Comptes enregistrés</span>
             </div>
             <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
               <span className="text-[11px] font-bold text-slate-400 uppercase">Prestataires Actifs</span>
-              <p className="text-xl font-black text-brand-600 mt-1">324</p>
+              <p className="text-xl font-black text-brand-600 mt-1">0</p>
               <span className="text-[10px] text-slate-500">Abonnement à jour</span>
             </div>
             <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
               <span className="text-[11px] font-bold text-slate-400 uppercase">Volume Paiements</span>
-              <p className="text-xl font-black text-slate-900 mt-1">2,850,000</p>
+              <p className="text-xl font-black text-slate-900 mt-1">0</p>
               <span className="text-[10px] text-slate-500">FCFA Mobile Money</span>
             </div>
             <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
@@ -226,7 +204,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token }) => {
               <p className="text-xl font-black text-rose-600 mt-1">
                 {refundRequests.filter((r) => r.status === 'PENDING').length}
               </p>
-              <span className="text-[10px] text-rose-500 font-bold">Action manuelle requise</span>
+              <span className="text-[10px] text-slate-400 font-bold">En cours de traitement</span>
             </div>
           </div>
         </div>
@@ -245,7 +223,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token }) => {
           </div>
 
           <div className="space-y-3">
-            {refundRequests.map((req) => (
+            {refundRequests.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400">
+                <CheckCircle className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                <p className="text-xs font-bold text-slate-600">Aucune demande de remboursement en attente.</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Toutes les réclamations clients à traiter apparaîtront ici.</p>
+              </div>
+            ) : (
+              refundRequests.map((req) => (
               <div
                 key={req.id}
                 className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
@@ -295,7 +280,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token }) => {
                   )}
                 </div>
               </div>
-            ))}
+            )))}
           </div>
         </div>
       )}
@@ -417,24 +402,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token }) => {
           </form>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {ads.map((ad) => (
-              <div
-                key={ad.id}
-                className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-2"
-              >
-                <div className="flex items-center justify-between">
-                  <h5 className="text-xs font-black text-slate-900">{ad.title}</h5>
-                  <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md">
-                    Actif
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600">{ad.content}</p>
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px] text-slate-400">
-                  <span>Vues : {ad.views}</span>
-                  <span>Clics : {ad.clicks}</span>
-                </div>
+            {ads.length === 0 ? (
+              <div className="col-span-full p-8 text-center bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400">
+                <Megaphone className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                <p className="text-xs font-bold text-slate-600">Aucune publication sponsorisée active.</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Utilisez le formulaire ci-dessus pour publier une annonce sponsorisée.</p>
               </div>
-            ))}
+            ) : (
+              ads.map((ad) => (
+                <div
+                  key={ad.id}
+                  className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-xs font-black text-slate-900">{ad.title}</h5>
+                    <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md">
+                      Actif
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600">{ad.content}</p>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px] text-slate-400">
+                    <span>Vues : {ad.views}</span>
+                    <span>Clics : {ad.clicks}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

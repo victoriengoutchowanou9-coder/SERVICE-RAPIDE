@@ -96,23 +96,12 @@ export const AuthView: React.FC<AuthViewProps> = ({
       // Si le compte nécessite la confirmation OTP
       if (data.requiresOtp) {
         setMode('OTP');
-        setOtpInfoMsg(data.message || `Un code OTP a été envoyé à ${email}.`);
-        if (data.demoOtpCode) {
-          setOtpCode(data.demoOtpCode);
-        }
+        setOtpInfoMsg(data.message || `Un code de confirmation a été envoyé à ${email}.`);
       } else {
         onSuccess(data);
       }
     } catch (err: any) {
-      if (err.message && err.message.includes('Trop de tentatives')) {
-        setError(err.message);
-      } else {
-        // En démo de secours si le backend nest n'est pas encore en écoute
-        setMode('OTP');
-        const code = '123456';
-        setOtpCode(code);
-        setOtpInfoMsg(`Code OTP généré pour ${email} : ${code}`);
-      }
+      setError(err.message || 'Une erreur est survenue lors de l\'authentification. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -146,37 +135,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
         },
       });
     } catch (err: any) {
-      // Fallback local instantané
-      onSuccess({
-        accessToken: `demo_jwt_active_${Date.now()}`,
-        user: {
-          email,
-          firstName,
-          lastName,
-          role: selectedRole,
-          isActive: true,
-          countryCode: selectedCountry,
-          preferredLanguage: language,
-          clientTrialExpiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
-          providerProfile:
-            selectedRole === 'PROVIDER'
-              ? {
-                  singleName: firstName || 'Prestataire',
-                  fullName: `${firstName} ${lastName}`.trim(),
-                  serviceOffered: 'Services Spécialisés',
-                  city: 'Abidjan',
-                  department: 'Cocody',
-                  availability: 'AVAILABLE',
-                  receivesOnSite: true,
-                  travelRequired: true,
-                  travelFee: 2500,
-                  basePrice: 5000,
-                  pricingUnit: 'par prestation',
-                  subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
-                }
-              : null,
-        },
-      });
+      setError(err.message || 'Code OTP invalide ou expiré.');
     } finally {
       setLoading(false);
     }
@@ -188,11 +147,9 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setError(null);
     try {
       const data: any = await supabaseBackend.resendOtp(email);
-      setOtpInfoMsg(data.message || 'Nouveau code OTP envoyé !');
-      if (data.demoOtpCode) setOtpCode(data.demoOtpCode);
-    } catch {
-      setOtpInfoMsg('Nouveau code OTP 654321 simulé');
-      setOtpCode('654321');
+      setOtpInfoMsg(data.message || 'Nouveau code envoyé par email.');
+    } catch (err: any) {
+      setError(err.message || 'Impossible de renvoyer le code pour le moment.');
     } finally {
       setLoading(false);
     }

@@ -1,11 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Configuration Supabase pour le Frontend
+// Configuration Supabase pour le Frontend (compatible Vite et Vercel/Next)
 export const SUPABASE_URL: string =
-  (import.meta.env.VITE_SUPABASE_URL as string) || 'https://gsgbvoyddagpjldgeyqk.supabase.co';
+  (import.meta.env.VITE_SUPABASE_URL as string) ||
+  (import.meta.env.NEXT_PUBLIC_SUPABASE_URL as string) ||
+  'https://gsgbvoyddagpjldgeyqk.supabase.co';
 
 export const SUPABASE_ANON_KEY: string =
-  (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || '';
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string) ||
+  (import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string) ||
+  '';
 
 export const isSupabaseConfigured = Boolean(
   SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('votre_anon_key_ici')

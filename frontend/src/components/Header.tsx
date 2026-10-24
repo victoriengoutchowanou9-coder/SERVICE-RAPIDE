@@ -9,6 +9,7 @@ interface HeaderProps {
   onLanguageChange: (l: string) => void;
   user: any;
   onLogout: () => void;
+  onGoHome?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLanguageChange,
   user,
   onLogout,
+  onGoHome,
 }) => {
   const currentCountryObj = AFRICAN_COUNTRIES.find((c) => c.code === country) || AFRICAN_COUNTRIES[0];
 
@@ -25,7 +27,10 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 shadow-xs">
       <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
         {/* Logo de l'application */}
-        <div className="flex items-center gap-2">
+        <div
+          onClick={onGoHome}
+          className={`flex items-center gap-2 ${onGoHome ? 'cursor-pointer hover:opacity-90 transition' : ''}`}
+        >
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
             <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
               <path d="M13 10V3L4 14h7v7l9-11h-7z" />

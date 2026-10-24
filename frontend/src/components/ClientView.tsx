@@ -448,15 +448,12 @@ export const ClientView: React.FC<ClientViewProps> = ({
                 >
                   <option value="DEFAULT">Pertinence</option>
                   <option value="PRICE_ASC">Prix le plus bas (Comparer)</option>
-                  <option value="RATING_DESC">Meilleure note ★</option>
-                  <option value="MISSIONS_DESC">Missions réalisées 🏆</option>
                 </select>
               </div>
             </div>
 
             <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px] text-slate-500">
               <span>{filtered.length} prestataire(s) trouvé(s)</span>
-              <span>Deux modes disponibles : ⚡ Maintenant ou 📅 Programmer</span>
             </div>
           </div>
 
@@ -562,28 +559,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
                       </div>
                     )}
 
-                    {/* NOTE & NOMBRE DE MISSIONS RÉALISÉES */}
-                    <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 mb-3 text-xs">
-                      {/* Note */}
-                      <button
-                        type="button"
-                        onClick={() => setReviewsProvider(item)}
-                        className="flex items-center gap-1.5 font-black text-amber-900 hover:text-amber-700 transition"
-                      >
-                        <Star className="w-4 h-4 fill-amber-400 text-amber-400 shrink-0" />
-                        <span>{item.rating || 4.9} / 5</span>
-                        <span className="text-[10px] font-normal text-slate-500 underline ml-0.5">
-                          ({item.reviewsCount || 0} avis)
-                        </span>
-                      </button>
-
-                      {/* Missions réalisées */}
-                      <div className="flex items-center gap-1 text-[11px] font-extrabold text-slate-700">
-                        <span>🏆</span>
-                        <span>{item.completedMissions || 15} missions réalisées</span>
-                      </div>
-                    </div>
-
                     {/* PRIX ESTIMÉ DU SERVICE & DÉCOMPOSITION TRANSPARENTE */}
                     <div className="mb-3.5 p-3 bg-emerald-50 rounded-2xl border border-emerald-200/90 flex items-center justify-between">
                       <div>
@@ -601,13 +576,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
                           {item.travelRequired && ` + Déplacement : ${item.travelFee.toLocaleString()} FCFA`}
                         </p>
                       </div>
-
-                      <button
-                        onClick={() => setReviewsProvider(item)}
-                        className="text-[10px] font-bold bg-white text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-xl shadow-xs hover:bg-emerald-100 transition"
-                      >
-                        Consulter les avis
-                      </button>
                     </div>
 
                     {/* Modalités d'intervention */}
@@ -625,18 +593,8 @@ export const ClientView: React.FC<ClientViewProps> = ({
                     </div>
                   </div>
 
-                  {/* BOUTONS D'ACTION : RÉSERVER (MAINTENANT / PROGRAMMER) + CONTACT */}
+                  {/* ZONE CONTACT (DÉBLOQUÉ / BLOQUÉ) */}
                   <div className="pt-3 border-t border-slate-100 space-y-2">
-                    {/* Bouton Réserver Immédiatement ou Programmer */}
-                    <button
-                      type="button"
-                      onClick={() => setBookingProvider(item)}
-                      className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm"
-                    >
-                      <Zap className="w-4 h-4 fill-slate-950" />
-                      <span>Demander un service (Maintenant ou Programmer)</span>
-                    </button>
-
                     {/* Zone de Contact Débloqué / Bloqué */}
                     {isUnlocked ? (
                       <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200">

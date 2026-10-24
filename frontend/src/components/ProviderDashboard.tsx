@@ -74,7 +74,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
     }
   );
 
-  const [activeSubTab, setActiveSubTab] = useState<'MISSIONS' | 'PROFILE' | 'REVIEWS' | 'FEED' | 'ADS'>('MISSIONS');
+  const [activeSubTab, setActiveSubTab] = useState<'MISSIONS' | 'PROFILE' | 'FEED' | 'ADS'>('MISSIONS');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [showSubModal, setShowSubModal] = useState(false);
@@ -362,16 +362,6 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
         >
           <Camera className="w-3.5 h-3.5 text-slate-700" />
           <span>Profil, Tarifs & Zones</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('REVIEWS')}
-          className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeSubTab === 'REVIEWS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-          }`}
-        >
-          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-          <span>Avis & Évaluations ({profile.rating}★)</span>
         </button>
 
         <button
@@ -1000,86 +990,6 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
             <span>{loading ? 'Enregistrement...' : 'Enregistrer mon profil, mes tarifs et mes zones'}</span>
           </button>
         </form>
-      )}
-
-      {/* ONGLET 3 : AVIS, NOTES & ÉVALUATIONS REÇUES */}
-      {activeSubTab === 'REVIEWS' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-base font-black text-slate-900">Mes Évaluations & Réputation</h3>
-                <p className="text-xs text-slate-500">
-                  Notes laissées par les clients ayant validé une mission avec vous
-                </p>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="text-center">
-                  <div className="flex items-center gap-1 text-2xl font-black text-amber-500">
-                    <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
-                    <span>{profile.rating > 0 ? profile.rating.toFixed(1) : '0.0'}</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-bold">
-                    Sur {profile.reviewsCount || 0} avis
-                  </span>
-                </div>
-
-                <div className="h-10 w-px bg-slate-200" />
-
-                <div className="text-center">
-                  <div className="text-2xl font-black text-emerald-600">
-                    {profile.completedMissions || 0}
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-bold">Missions réussies</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Liste des avis reçus */}
-            <div className="space-y-3 pt-2">
-              <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                Derniers avis clients
-              </h4>
-
-              {mockReviews.length === 0 ? (
-                <div className="p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center text-slate-400">
-                  <Star className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                  <p className="text-xs font-bold text-slate-600">Aucun avis client pour le moment.</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Les évaluations laissées par vos clients après intervention apparaîtront ici.</p>
-                </div>
-              ) : (
-                mockReviews.map((rev) => (
-                <div
-                  key={rev.id}
-                  className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-900">{rev.clientName}</span>
-                      <span className="text-[10px] text-slate-400">• {rev.date}</span>
-                    </div>
-
-                    <div className="flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          className={`w-3.5 h-3.5 ${
-                            star <= rev.rating
-                              ? 'text-amber-400 fill-amber-400'
-                              : 'text-slate-200 fill-slate-200'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-slate-600 italic">« {rev.comment} »</p>
-                </div>
-              )))}
-            </div>
-          </div>
-        </div>
       )}
 
       {/* ONGLET 4 : FIL D'ACTUALITÉ & CLIENTS CONNECTÉS */}

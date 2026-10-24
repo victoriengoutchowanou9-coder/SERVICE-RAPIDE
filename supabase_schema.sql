@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS users (
     "countryCode" VARCHAR(10) DEFAULT 'CI',
     "preferredLanguage" VARCHAR(10) DEFAULT 'fr',
     "clientTrialExpiresAt" TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '7 days'),
+    "isActive" BOOLEAN DEFAULT TRUE,
     "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

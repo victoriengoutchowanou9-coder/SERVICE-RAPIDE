@@ -13,7 +13,45 @@ export function App() {
   const [country, setCountry] = useState('CI');
   const [language, setLanguage] = useState('fr');
   const [viewMode, setViewMode] = useState<'LANDING' | 'APP'>('LANDING'); // Par défaut : Site Web Vitrine
+  const [authInitialMode, setAuthInitialMode] = useState<'LOGIN' | 'REGISTER'>('REGISTER');
   const [authData, setAuthData] = useState<any>(null);
+
+  // Navigation interne sans rechargement
+  const navigateTo = (path: string, mode: 'LOGIN' | 'REGISTER' = 'REGISTER') => {
+    setAuthInitialMode(mode);
+    if (path === '/' || path === '/landing') {
+      setViewMode('LANDING');
+      if (typeof window !== 'undefined') {
+        window.history.pushState({}, '', '/');
+      }
+    } else {
+      setViewMode('APP');
+      if (typeof window !== 'undefined') {
+        window.history.pushState({}, '', path);
+      }
+    }
+  };
+
+  // Synchronisation avec l'URL au chargement et lors de l'utilisation des boutons Précédent/Suivant
+  useEffect(() => {
+    const handleUrlRoute = () => {
+      if (typeof window === 'undefined') return;
+      const pathname = window.location.pathname.toLowerCase();
+      if (pathname === '/inscription' || pathname === '/register') {
+        setViewMode('APP');
+        setAuthInitialMode('REGISTER');
+      } else if (pathname === '/connexion' || pathname === '/login') {
+        setViewMode('APP');
+        setAuthInitialMode('LOGIN');
+      } else if (pathname === '/app') {
+        setViewMode('APP');
+      }
+    };
+
+    handleUrlRoute();
+    window.addEventListener('popstate', handleUrlRoute);
+    return () => window.removeEventListener('popstate', handleUrlRoute);
+  }, []);
 
   // Fil des publications partagé entre prestataires et clients
   const [posts, setPosts] = useState<PostItem[]>([]);
@@ -180,16 +218,17 @@ export function App() {
         onLanguageChange={setLanguage}
         user={user}
         onLogout={handleLogout}
-        onGoHome={() => setViewMode('LANDING')}
+        onGoHome={() => navigateTo('/', 'REGISTER')}
+        onNavigateAuth={(mode) => navigateTo(mode === 'LOGIN' ? '/connexion' : '/inscription', mode)}
       />
 
       <main className="flex-1">
         {/* SITE WEB VITRINE COMPLET */}
         {viewMode === 'LANDING' ? (
           <LandingPage
-            onStart={(initialRole) => {
-              setViewMode('APP');
+            onStart={() => {
               handleLogout();
+              navigateTo('/inscription', 'REGISTER');
             }}
           />
         ) : (
@@ -199,9 +238,14 @@ export function App() {
               <AuthView
                 country={country}
                 language={language}
+                initialMode={authInitialMode}
+                onNavigate={(mode) => navigateTo(mode === 'LOGIN' ? '/connexion' : '/inscription', mode)}
                 onSuccess={(data) => {
                   handleAuthSuccess(data);
                   setViewMode('APP');
+                  if (typeof window !== 'undefined') {
+                    window.history.pushState({}, '', '/app');
+                  }
                 }}
               />
             )}
@@ -240,7 +284,7 @@ export function App() {
               />
             )}
 
-            {user && user.role === 'ADMIN' && (
+            {user && (user.role === 'ADMIN' || user.role === 'DEVELOPER' || user.role === 'developer') && (
               <AdminDashboard token={token} />
             )}
           </>

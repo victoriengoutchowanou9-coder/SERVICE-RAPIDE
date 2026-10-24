@@ -18,16 +18,27 @@ import { supabaseBackend } from '../config/supabase';
 interface AuthViewProps {
   country: string;
   language: string;
+  initialMode?: 'REGISTER' | 'LOGIN';
+  onNavigate?: (mode: 'REGISTER' | 'LOGIN') => void;
   onSuccess: (data: any) => void;
 }
 
 export const AuthView: React.FC<AuthViewProps> = ({
   country,
   language,
+  initialMode = 'REGISTER',
+  onNavigate,
   onSuccess,
 }) => {
   // Modes : 'REGISTER' | 'LOGIN' | 'OTP'
-  const [mode, setMode] = useState<'REGISTER' | 'LOGIN' | 'OTP'>('REGISTER');
+  const [mode, setMode] = useState<'REGISTER' | 'LOGIN' | 'OTP'>(initialMode);
+
+  // Synchronisation si initialMode change (changement de route)
+  React.useEffect(() => {
+    if (initialMode && mode !== 'OTP') {
+      setMode(initialMode);
+    }
+  }, [initialMode]);
 
   // Champs du formulaire
   const [firstName, setFirstName] = useState('');
@@ -56,10 +67,17 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setError(null);
     setRateLimitInfo(null);
 
-    // Validation stricte format email
+    const cleanInput = email.trim().toLowerCase();
+    const isDevIdentifier = cleanInput === 'developer_admin' || cleanInput === 'developer';
+
+    // Validation email ou identifiant développeur
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email.trim())) {
-      setError('Format email invalide. Veuillez fournir une adresse email valide (ex: utilisateur@domaine.com).');
+    if (!emailRegex.test(cleanInput) && !(mode === 'LOGIN' && isDevIdentifier)) {
+      setError(
+        mode === 'LOGIN'
+          ? 'Identifiant ou format email invalide.'
+          : 'Format email invalide. Veuillez fournir une adresse email valide (ex: utilisateur@domaine.com).'
+      );
       return;
     }
 
@@ -290,19 +308,19 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </div>
             )}
 
-            {/* Email avec contrôle format serveur */}
+            {/* Email ou Identifiant */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Email *
+                {mode === 'REGISTER' ? 'Adresse email *' : 'Email ou Identifiant *'}
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
-                  type="email"
+                  type={mode === 'REGISTER' ? 'email' : 'text'}
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="votre.email@exemple.com"
+                  placeholder={mode === 'REGISTER' ? 'votre.email@exemple.com' : 'votre.email@exemple.com ou identifiant'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                 />
               </div>
@@ -439,10 +457,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
               className="w-full mt-2 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white font-black py-3 px-4 rounded-xl shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2 text-xs uppercase tracking-wider disabled:opacity-60"
             >
               {loading ? (
-                <span>Vérification sécurisée...</span>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>{mode === 'REGISTER' ? 'Inscription en cours...' : 'Connexion en cours...'}</span>
+                </div>
               ) : (
                 <>
-                  <span>{mode === 'REGISTER' ? "S'inscrire (Envoi OTP)" : 'Se connecter'}</span>
+                  <span>{mode === 'REGISTER' ? "S'inscrire" : 'Se connecter'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -461,6 +482,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   onClick={() => {
                     setMode('LOGIN');
                     setError(null);
+                    onNavigate?.('LOGIN');
                   }}
                   className="font-bold text-brand-600 hover:text-brand-700 hover:underline transition"
                 >
@@ -475,6 +497,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   onClick={() => {
                     setMode('REGISTER');
                     setError(null);
+                    onNavigate?.('REGISTER');
                   }}
                   className="font-bold text-brand-600 hover:text-brand-700 hover:underline transition"
                 >
@@ -484,16 +507,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
             )}
           </div>
         )}
-
-        {/* Note de sécurité */}
-        <div className="mt-5 p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col gap-1 text-[11px] text-slate-500">
-          <div className="flex items-center gap-1.5 font-bold text-slate-700">
-            <span>🔒 Sécurité Maximale</span>
-          </div>
-          <span>• RLS actif sur Supabase (isolation stricte par utilisateur).</span>
-          <span>• Validation OTP obligatoire pour l'activation.</span>
-          <span>• Rate Limiting : 4 tentatives / minute par adresse IP.</span>
-        </div>
       </div>
     </div>
   );

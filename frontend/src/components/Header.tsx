@@ -10,6 +10,7 @@ interface HeaderProps {
   user: any;
   onLogout: () => void;
   onGoHome?: () => void;
+  onNavigateAuth?: (mode: 'LOGIN' | 'REGISTER') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   user,
   onLogout,
   onGoHome,
+  onNavigateAuth,
 }) => {
   const currentCountryObj = AFRICAN_COUNTRIES.find((c) => c.code === country) || AFRICAN_COUNTRIES[0];
 
@@ -81,6 +83,24 @@ export const Header: React.FC<HeaderProps> = ({
             </select>
             <span className="pointer-events-none absolute right-1.5 text-slate-400 text-[10px]">▼</span>
           </div>
+
+          {/* Liens internes Connexion / S'inscrire */}
+          {!user && onNavigateAuth && (
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                onClick={() => onNavigateAuth('LOGIN')}
+                className="text-xs font-bold text-slate-700 hover:text-brand-600 px-2.5 py-1.5 transition"
+              >
+                Connexion
+              </button>
+              <button
+                onClick={() => onNavigateAuth('REGISTER')}
+                className="text-xs font-black bg-brand-600 hover:bg-brand-700 text-white px-3 sm:px-3.5 py-1.5 rounded-xl shadow-xs transition"
+              >
+                S'inscrire
+              </button>
+            </div>
+          )}
 
           {/* Bouton Déconnexion très visible */}
           {user && (

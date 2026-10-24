@@ -52,7 +52,11 @@ export const supabaseBackend = {
       throw new Error("Configuration Supabase manquante : veuillez renseigner VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.");
     }
 
-    const email = payload.email.toLowerCase().trim();
+    let email = payload.email.toLowerCase().trim();
+    // Support de l'identifiant développeur sur le formulaire ordinaire
+    if (email === 'developer_admin' || email === 'developer') {
+      email = 'developer_admin@servicerapide.africa';
+    }
     const password = payload.password || 'serviceRapide2025!';
 
     // Tentative de connexion
@@ -233,6 +237,11 @@ export const supabaseBackend = {
   async chooseRole(userId: string, payload: ChooseRolePayload) {
     if (!isSupabaseConfigured || !userId) {
       return { role: payload.role };
+    }
+
+    // Sécurité stricte : seuls les rôles CLIENT et PROVIDER peuvent être choisis publiquement
+    if (payload.role !== 'CLIENT' && payload.role !== 'PROVIDER') {
+      throw new Error("Rôle non autorisé pour l'attribution publique.");
     }
 
     // 1. Mettre à jour le rôle dans public.users

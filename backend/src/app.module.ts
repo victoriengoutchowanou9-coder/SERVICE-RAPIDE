@@ -43,7 +43,11 @@ import { UserActivationMiddleware } from './common/middlewares/user-activation.m
         username: config.get<string>('DB_USERNAME', 'postgres.gsgbvoyddagpjldgeyqk'),
         password: config.get<string>('DB_PASSWORD', 'BI6PbBYPGqNFppwx'),
         database: config.get<string>('DB_NAME', 'postgres'),
-        ssl: config.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
+        ssl:
+          config.get<string>('DB_SSL') === 'true' ||
+          config.get<string>('DB_HOST', '').includes('supabase.com')
+            ? { rejectUnauthorized: false }
+            : false,
         entities: [
           User,
           ProviderProfile,

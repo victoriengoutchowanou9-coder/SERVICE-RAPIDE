@@ -12,11 +12,11 @@ services:
       - key: PORT
         value: 3000
       - key: DB_HOST
-        sync: false
+        value: aws-0-eu-west-1.pooler.supabase.com
       - key: DB_PORT
-        value: 6543
+        value: "6543"
       - key: DB_USERNAME
-        sync: false
+        value: postgres.gsgbvoyddagpjldgeyqk
       - key: DB_PASSWORD
         sync: false
       - key: DB_NAME

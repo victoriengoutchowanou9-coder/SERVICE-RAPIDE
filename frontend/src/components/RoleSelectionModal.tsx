@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Briefcase, Sparkles, Check, ArrowRight } from 'lucide-react';
+import { API_BASE_URL } from '../config/api';
 
 interface RoleSelectionModalProps {
   onRoleChosen: (roleData: any) => void;
@@ -35,7 +36,7 @@ export const RoleSelectionModal: React.FC<RoleSelectionModalProps> = ({
     }
 
     try {
-      const res = await fetch('http://localhost:3000/auth/choose-role', {
+      const res = await fetch(`${API_BASE_URL}/auth/choose-role`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

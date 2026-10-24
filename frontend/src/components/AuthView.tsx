@@ -13,6 +13,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { AFRICAN_COUNTRIES } from '../types';
+import { API_BASE_URL } from '../config/api';
 
 interface AuthViewProps {
   country: string;
@@ -82,7 +83,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:3000/auth/login-or-register', {
+      const res = await fetch(`${API_BASE_URL}/auth/login-or-register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -148,7 +149,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:3000/auth/verify-otp', {
+      const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -216,7 +217,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('http://localhost:3000/auth/resend-otp', {
+      const res = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),

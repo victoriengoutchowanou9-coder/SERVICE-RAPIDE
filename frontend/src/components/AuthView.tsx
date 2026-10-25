@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Mail,
   Lock,
@@ -11,9 +11,11 @@ import {
   EyeOff,
   KeyRound,
   RefreshCw,
+  Briefcase,
 } from 'lucide-react';
-import { AFRICAN_COUNTRIES } from '../types';
 import { supabaseBackend } from '../config/supabase';
+import { GeoCascadeSelect, GeoSelection } from './GeoCascadeSelect';
+import { getDialCodeForCountry } from '../data/geoData';
 
 interface AuthViewProps {
   country: string;
@@ -33,22 +35,34 @@ export const AuthView: React.FC<AuthViewProps> = ({
   // Modes : 'REGISTER' | 'LOGIN' | 'OTP'
   const [mode, setMode] = useState<'REGISTER' | 'LOGIN' | 'OTP'>(initialMode);
 
-  // Synchronisation si initialMode change (changement de route)
-  React.useEffect(() => {
+  // Synchronisation si initialMode change depuis l'URL ou le Header
+  useEffect(() => {
     if (initialMode && mode !== 'OTP') {
       setMode(initialMode);
     }
   }, [initialMode]);
 
-  // Champs du formulaire
+  // Champs de saisie
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [emailOrIdentifier, setEmailOrIdentifier] = useState('');
+  const [rawPhoneNumber, setRawPhoneNumber] = useState('');
   const [selectedRole, setSelectedRole] = useState<'CLIENT' | 'PROVIDER'>('CLIENT');
-  const [selectedCountry, setSelectedCountry] = useState(country || 'CI');
+  const [serviceOffered, setServiceOffered] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Géographie hiérarchique
+  const [geo, setGeo] = useState<GeoSelection>({
+    country: 'Bénin',
+    countryCode: country || 'BJ',
+    department: '',
+    commune: '',
+    city: '',
+  });
+
+  // Code indicatif téléphonique dynamique (+229, +225, etc.)
+  const phoneDialCode = getDialCodeForCountry(geo.countryCode);
 
   // OTP
   const [otpCode, setOtpCode] = useState('');
@@ -59,41 +73,85 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rateLimitInfo, setRateLimitInfo] = useState<string | null>(null);
+
+  // Gestion de la sélection géographique
+  const handleGeoChange = (selection: GeoSelection) => {
+    setGeo(selection);
+  };
 
   // Soumission Inscription / Connexion
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setRateLimitInfo(null);
 
-    const cleanInput = email.trim().toLowerCase();
-    const isDevIdentifier = cleanInput === 'developer_admin' || cleanInput === 'developer';
+    const cleanInput = emailOrIdentifier.trim();
+    const isDevIdentifier =
+      cleanInput.toLowerCase() === 'developer_admin' ||
+      cleanInput.toLowerCase() === 'developer';
 
-    // Validation email ou identifiant développeur
+    // 1. Validation Email / Identifiant
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(cleanInput) && !(mode === 'LOGIN' && isDevIdentifier)) {
-      setError(
-        mode === 'LOGIN'
-          ? 'Identifiant ou format email invalide.'
-          : 'Format email invalide. Veuillez fournir une adresse email valide (ex: utilisateur@domaine.com).'
-      );
-      return;
+    if (mode === 'REGISTER') {
+      if (!cleanInput) {
+        setError("L'adresse email est obligatoire.");
+        return;
+      }
+      if (!emailRegex.test(cleanInput)) {
+        setError("Format d'adresse email invalide (ex: utilisateur@domaine.com).");
+        return;
+      }
+    } else {
+      // Mode LOGIN : Accepte soit un email valide, soit l'identifiant développeur
+      if (!cleanInput) {
+        setError("Veuillez saisir votre identifiant ou adresse email.");
+        return;
+      }
+      if (!emailRegex.test(cleanInput) && !isDevIdentifier) {
+        setError("Identifiant ou format d'adresse email invalide.");
+        return;
+      }
     }
 
-    // Validation stricte taille mot de passe (au moins 8 caractères)
+    // 2. Validation Mot de passe (>= 8 caractères)
     if (password.length < 8) {
       setError('Le mot de passe doit comporter au moins 8 caractères.');
       return;
     }
 
+    // 3. Validations spécifiques à l'inscription
     if (mode === 'REGISTER') {
       if (!firstName.trim() || !lastName.trim()) {
-        setError('Veuillez renseigner votre prénom et votre nom.');
+        setError('Le prénom et le nom sont obligatoires.');
         return;
       }
+
       if (password !== confirmPassword) {
-        setError('Les mots de passe ne correspondent pas. Veuillez répéter le mot de passe.');
+        setError('Les mots de passe ne correspondent pas.');
+        return;
+      }
+
+      // Validation Téléphone
+      const cleanPhoneDigits = rawPhoneNumber.replace(/\D/g, '');
+      if (cleanPhoneDigits.length < 8 || cleanPhoneDigits.length > 15) {
+        setError('Le numéro de téléphone doit comporter entre 8 et 15 chiffres.');
+        return;
+      }
+
+      // Validation Localisation
+      if (!geo.country) {
+        setError('Veuillez sélectionner votre pays.');
+        return;
+      }
+      if (!geo.department) {
+        setError('Veuillez sélectionner votre département ou région.');
+        return;
+      }
+      if (!geo.commune) {
+        setError('Veuillez sélectionner votre commune.');
+        return;
+      }
+      if (!geo.city) {
+        setError('Veuillez sélectionner votre ville ou quartier.');
         return;
       }
     }
@@ -101,25 +159,35 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setLoading(true);
 
     try {
+      const fullPhone = rawPhoneNumber.trim()
+        ? `${phoneDialCode} ${rawPhoneNumber.trim().replace(/^0+/, '')}`
+        : '';
+
       const data = await supabaseBackend.loginOrRegister({
-        email: email.trim().toLowerCase(),
+        email: cleanInput,
         password,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phoneNumber: phone.trim(),
-        countryCode: selectedCountry,
+        phoneNumber: fullPhone,
+        role: selectedRole,
+        country: geo.country,
+        countryCode: geo.countryCode,
+        department: geo.department,
+        commune: geo.commune,
+        city: geo.city,
+        serviceOffered: serviceOffered.trim(),
         preferredLanguage: language,
+        isRegister: mode === 'REGISTER',
       });
 
-      // Si le compte nécessite la confirmation OTP
       if (data.requiresOtp) {
         setMode('OTP');
-        setOtpInfoMsg(data.message || `Un code de confirmation a été envoyé à ${email}.`);
+        setOtpInfoMsg(data.message || `Un code de confirmation a été envoyé à ${cleanInput}.`);
       } else {
         onSuccess(data);
       }
     } catch (err: any) {
-      setError(err.message || 'Une erreur est survenue lors de l\'authentification. Veuillez réessayer.');
+      setError(err.message || 'Une erreur est survenue lors de l\'authentification.');
     } finally {
       setLoading(false);
     }
@@ -138,17 +206,22 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setLoading(true);
 
     try {
-      const data: any = await supabaseBackend.verifyOtp(email, otpCode);
+      const cleanEmail = emailOrIdentifier.trim().toLowerCase();
+      const data: any = await supabaseBackend.verifyOtp(cleanEmail, otpCode);
 
       onSuccess({
-        accessToken: data?.accessToken || `supabase_session_${Date.now()}`,
+        accessToken: data?.accessToken || `sr_session_${Date.now()}`,
         user: {
-          email,
+          email: cleanEmail,
           firstName,
           lastName,
           role: selectedRole,
           isActive: true,
-          countryCode: selectedCountry,
+          country: geo.country,
+          countryCode: geo.countryCode,
+          department: geo.department,
+          commune: geo.commune,
+          city: geo.city,
           preferredLanguage: language,
         },
       });
@@ -164,7 +237,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const data: any = await supabaseBackend.resendOtp(email);
+      const cleanEmail = emailOrIdentifier.trim().toLowerCase();
+      const data: any = await supabaseBackend.resendOtp(cleanEmail);
       setOtpInfoMsg(data.message || 'Nouveau code envoyé par email.');
     } catch (err: any) {
       setError(err.message || 'Impossible de renvoyer le code pour le moment.');
@@ -174,7 +248,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
   };
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8">
+    <div className="max-w-xl mx-auto px-4 py-8">
       <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-100">
         {/* En-tête */}
         <div className="text-center mb-6">
@@ -182,15 +256,15 @@ export const AuthView: React.FC<AuthViewProps> = ({
             {mode === 'OTP'
               ? 'Validation de Sécurité OTP'
               : mode === 'REGISTER'
-              ? 'Créer un compte'
-              : 'Connexion à votre compte'}
+              ? 'Créer votre compte'
+              : 'Connexion à votre espace'}
           </h2>
           <p className="text-xs text-slate-500 mt-1">
             {mode === 'OTP'
-              ? `Entrez le code à 6 chiffres envoyé à ${email}`
+              ? `Entrez le code à 6 chiffres envoyé à ${emailOrIdentifier}`
               : mode === 'REGISTER'
-              ? "Rejoignez notre plateforme dès aujourd'hui"
-              : 'Accédez à votre espace client ou prestataire'}
+              ? 'Remplissez le formulaire pour rejoindre SERVICE RAPIDE'
+              : 'Saisissez vos identifiants pour continuer'}
           </p>
         </div>
 
@@ -201,13 +275,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
           </div>
         )}
 
-        {rateLimitInfo && (
-          <div className="mb-4 p-2 bg-blue-50 border border-blue-200 text-blue-700 text-[11px] rounded-xl font-medium text-center">
-            🛡️ Sécurité : {rateLimitInfo}
-          </div>
-        )}
-
-        {/* 1. ÉCRAN OTP */}
+        {/* 1. ÉCRAN VALIDATION OTP */}
         {mode === 'OTP' ? (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             {otpInfoMsg && (
@@ -224,7 +292,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Ou entrez le code de confirmation (6 chiffres) si vous préférez :
+                Ou entrez le code de confirmation (6 chiffres) :
               </label>
               <div className="relative">
                 <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -232,6 +300,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   type="text"
                   required
                   maxLength={6}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  data-lpignore="true"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                   placeholder="Ex: 123456"
@@ -255,7 +327,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 className="text-brand-600 font-bold hover:underline flex items-center gap-1"
               >
                 <RefreshCw className="w-3 h-3" />
-                <span>Renvoyer le code OTP</span>
+                <span>Renvoyer le code</span>
               </button>
 
               <button
@@ -270,6 +342,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
         ) : (
           /* 2. FORMULAIRE D'INSCRIPTION / CONNEXION */
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* PRÉNOM ET NOM (INSCRIPTION SEULEMENT) */}
             {mode === 'REGISTER' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -281,6 +354,12 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     <input
                       type="text"
                       required
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="words"
+                      spellCheck={false}
+                      data-lpignore="true"
+                      data-form-type="other"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       placeholder="Votre prénom"
@@ -298,6 +377,12 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     <input
                       type="text"
                       required
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="words"
+                      spellCheck={false}
+                      data-lpignore="true"
+                      data-form-type="other"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="Votre nom"
@@ -308,7 +393,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </div>
             )}
 
-            {/* Email ou Identifiant */}
+            {/* EMAIL OU IDENTIFIANT */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 {mode === 'REGISTER' ? 'Adresse email *' : 'Email ou Identifiant *'}
@@ -316,78 +401,148 @@ export const AuthView: React.FC<AuthViewProps> = ({
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
-                  type={mode === 'REGISTER' ? 'email' : 'text'}
+                  type="text"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={mode === 'REGISTER' ? 'votre.email@exemple.com' : 'votre.email@exemple.com ou identifiant'}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-form-type="other"
+                  value={emailOrIdentifier}
+                  onChange={(e) => setEmailOrIdentifier(e.target.value)}
+                  placeholder={
+                    mode === 'REGISTER'
+                      ? 'votre.email@exemple.com'
+                      : 'votre.email@exemple.com ou developer_admin'
+                  }
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                 />
               </div>
             </div>
 
-            {/* Téléphone (optionnel) */}
+            {/* TÉLÉPHONE AVEC CODE INDICATIF DYNAMIQUE (INSCRIPTION) */}
             {mode === 'REGISTER' && (
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Téléphone (optionnel)
+                  Numéro de téléphone *
                 </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+225... / +229..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                  />
+                <div className="flex items-center gap-2">
+                  {/* Préfixe indicatif international lié au pays sélectionné */}
+                  <div className="shrink-0 bg-slate-100 border border-slate-200 text-slate-800 text-xs font-black px-3 py-2.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                    <span>{phoneDialCode}</span>
+                  </div>
+
+                  {/* Saisie du numéro sans les suggestions intempestives */}
+                  <div className="relative flex-1">
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="tel"
+                      required
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      data-lpignore="true"
+                      data-form-type="other"
+                      value={rawPhoneNumber}
+                      onChange={(e) => setRawPhoneNumber(e.target.value.replace(/[^\d\s]/g, ''))}
+                      placeholder="Ex: 97 00 00 00 / 07 00 00 00"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Format international automatique avec indicatif {phoneDialCode} du pays sélectionné.
+                </p>
               </div>
             )}
 
-            {/* Rôle * et Pays * */}
+            {/* RÔLE DU COMPTE (INSCRIPTION SEULEMENT) */}
             {mode === 'REGISTER' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Rôle *
+                    Type de compte *
                   </label>
-                  <div className="relative">
-                    <select
-                      value={selectedRole}
-                      onChange={(e) => setSelectedRole(e.target.value as 'CLIENT' | 'PROVIDER')}
-                      className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500 cursor-pointer"
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRole('CLIENT')}
+                      className={`p-3 rounded-xl border text-left transition ${
+                        selectedRole === 'CLIENT'
+                          ? 'border-brand-600 bg-brand-50/50 text-brand-900 font-bold ring-2 ring-brand-500/20'
+                          : 'border-slate-200 bg-slate-50 text-slate-700 font-semibold hover:border-slate-300'
+                      }`}
                     >
-                      <option value="CLIENT">Client (Recherche de services)</option>
-                      <option value="PROVIDER">Prestataire (Professionnel)</option>
-                    </select>
-                    <span className="pointer-events-none absolute right-3 top-3 text-slate-400 text-xs">▼</span>
+                      <div className="text-xs font-black flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-brand-600" />
+                        <span>Client</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        Recherche et contact de prestataires
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRole('PROVIDER')}
+                      className={`p-3 rounded-xl border text-left transition ${
+                        selectedRole === 'PROVIDER'
+                          ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-bold ring-2 ring-emerald-500/20'
+                          : 'border-slate-200 bg-slate-50 text-slate-700 font-semibold hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="text-xs font-black flex items-center gap-1.5">
+                        <Briefcase className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Prestataire</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        Proposer vos services aux particuliers
+                      </p>
+                    </button>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Pays *
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={selectedCountry}
-                      onChange={(e) => setSelectedCountry(e.target.value)}
-                      className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500 cursor-pointer"
-                    >
-                      {AFRICAN_COUNTRIES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.flag} {c.nameFr}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="pointer-events-none absolute right-3 top-3 text-slate-400 text-xs">▼</span>
+                {selectedRole === 'PROVIDER' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Métier / Spécialité principale *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      data-lpignore="true"
+                      value={serviceOffered}
+                      onChange={(e) => setServiceOffered(e.target.value)}
+                      placeholder="Ex: Électricien, Plombier, Frigoriste, Coiffeuse..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                    />
                   </div>
-                </div>
+                )}
               </div>
             )}
 
-            {/* Mot de passe avec contrôle taille serveur >= 8 */}
+            {/* SÉLECTION GÉOGRAPHIQUE HIÉRARCHIQUE EN CASCADE : PAYS -> DÉPARTEMENT -> COMMUNE -> VILLE */}
+            {mode === 'REGISTER' && (
+              <div className="pt-2 border-t border-slate-100">
+                <GeoCascadeSelect
+                  initialValues={{
+                    country: geo.country,
+                    countryCode: geo.countryCode,
+                    department: geo.department,
+                    commune: geo.commune,
+                    city: geo.city,
+                  }}
+                  onChange={handleGeoChange}
+                  required={true}
+                />
+              </div>
+            )}
+
+            {/* MOT DE PASSE */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-bold text-slate-700">
@@ -403,9 +558,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   type={showPassword ? 'text' : 'password'}
                   required
                   minLength={8}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  data-lpignore="true"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Au moins 8 caractères"
+                  placeholder="Votre mot de passe"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                 />
                 <button
@@ -418,23 +577,22 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </div>
             </div>
 
-            {/* Confirmer le mot de passe */}
+            {/* CONFIRMER LE MOT DE PASSE (INSCRIPTION) */}
             {mode === 'REGISTER' && (
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Confirmer le mot de passe *
-                  </label>
-                  <span className="text-[10px] text-slate-400 font-semibold">
-                    Répétez le mot de passe
-                  </span>
-                </div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Confirmer le mot de passe *
+                </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
                     minLength={8}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    data-lpignore="true"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Répétez le mot de passe"
@@ -451,10 +609,11 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </div>
             )}
 
+            {/* BOUTON D'ACTION PRINCIPAL : "S'inscrire" OU "Se connecter" (AUCUNE MENTION OTP) */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white font-black py-3 px-4 rounded-xl shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2 text-xs uppercase tracking-wider disabled:opacity-60"
+              className="w-full mt-3 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white font-black py-3.5 px-4 rounded-xl shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2 text-xs uppercase tracking-wider disabled:opacity-60"
             >
               {loading ? (
                 <div className="flex items-center justify-center gap-2">
@@ -471,7 +630,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
           </form>
         )}
 
-        {/* Bascule Login / Register */}
+        {/* BASCULE CONNEXION / INSCRIPTION */}
         {mode !== 'OTP' && (
           <div className="mt-6 pt-5 border-t border-slate-100 text-center">
             {mode === 'REGISTER' ? (

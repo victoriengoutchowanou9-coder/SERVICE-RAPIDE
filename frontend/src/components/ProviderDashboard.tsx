@@ -31,6 +31,7 @@ import { AdsSection } from './AdsSection';
 import { PostItem, ServiceRequest, ReviewItem } from '../types';
 import { supabaseBackend } from '../config/supabase';
 import { saspayClient } from '../config/saspay';
+import { GeoCascadeSelect } from './GeoCascadeSelect';
 
 interface ProviderDashboardProps {
   user: any;
@@ -812,24 +813,26 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500"
               />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Ville Principale *</label>
-              <input
-                type="text"
-                required
-                value={profile.city || ''}
-                onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Quartier de base *</label>
-              <input
-                type="text"
-                required
-                value={profile.department || ''}
-                onChange={(e) => setProfile({ ...profile, department: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500"
+            <div className="sm:col-span-2 pt-2 border-t border-slate-100">
+              <GeoCascadeSelect
+                initialValues={{
+                  country: profile.country || user?.country || 'Bénin',
+                  countryCode: profile.countryCode || user?.countryCode || 'BJ',
+                  department: profile.department || '',
+                  commune: profile.commune || '',
+                  city: profile.city || '',
+                }}
+                onChange={(geo) =>
+                  setProfile({
+                    ...profile,
+                    country: geo.country,
+                    department: geo.department,
+                    commune: geo.commune,
+                    city: geo.city,
+                  })
+                }
+                required={true}
+                compact={true}
               />
             </div>
           </div>

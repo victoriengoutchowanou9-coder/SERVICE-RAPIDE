@@ -10,7 +10,7 @@ import { PostItem, ProviderItem, ServiceRequest } from './types';
 import { supabase, supabaseBackend } from './config/supabase';
 
 export function App() {
-  const [country, setCountry] = useState('CI');
+  const [country, setCountry] = useState('BJ');
   const [language, setLanguage] = useState('fr');
   const [viewMode, setViewMode] = useState<'LANDING' | 'APP'>('LANDING'); // Par défaut : Site Web Vitrine
   const [authInitialMode, setAuthInitialMode] = useState<'LOGIN' | 'REGISTER'>('REGISTER');
@@ -33,7 +33,27 @@ export function App() {
     }
   };
 
-  // Synchronisation avec l'URL au chargement et retours SasPay
+  // 1. Restauration de session locale au premier montage
+  useEffect(() => {
+    try {
+      const savedSession = localStorage.getItem('sr_session');
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession);
+        if (parsed?.user) {
+          setAuthData(parsed);
+          // Si l'utilisateur est développeur ou déjà connecté, on passe à l'APP
+          const pathname = window.location.pathname.toLowerCase();
+          if (pathname !== '/' && pathname !== '/landing') {
+            setViewMode('APP');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Erreur lecture session locale:', e);
+    }
+  }, []);
+
+  // 2. Synchronisation avec l'URL au chargement et retours SasPay
   useEffect(() => {
     const handleUrlRoute = () => {
       if (typeof window === 'undefined') return;
@@ -42,7 +62,6 @@ export function App() {
 
       if (search.includes('payment=success') || search.includes('payment_status=success')) {
         setPaymentAlert('🎉 Paiement Mobile Money validé avec succès via SasPay ! Votre accès est immédiatement actif.');
-        // Rechargement immédiat des droits frais depuis la base de données
         supabase.auth.getSession().then(async ({ data: { session } }) => {
           if (session?.user) {
             const fresh = await supabaseBackend.buildSessionUser(session);
@@ -61,6 +80,12 @@ export function App() {
       } else if (pathname === '/connexion' || pathname === '/login') {
         setViewMode('APP');
         setAuthInitialMode('LOGIN');
+      } else if (pathname === '/developer' || pathname === '/admin') {
+        setViewMode('APP');
+        // Si non authentifié, ouvrir directement le formulaire de connexion
+        if (!authData?.user) {
+          setAuthInitialMode('LOGIN');
+        }
       } else if (pathname === '/app') {
         setViewMode('APP');
       }
@@ -69,7 +94,7 @@ export function App() {
     handleUrlRoute();
     window.addEventListener('popstate', handleUrlRoute);
     return () => window.removeEventListener('popstate', handleUrlRoute);
-  }, []);
+  }, [authData?.user]);
 
   // Fil des publications partagé entre prestataires et clients
   const [posts, setPosts] = useState<PostItem[]>([]);
@@ -82,7 +107,6 @@ export function App() {
 
   // Écoute automatique des liens de confirmation d'email et sessions actives Supabase
   useEffect(() => {
-    // 1. Écoute les événements d'authentification (ex: clic sur le lien de confirmation reçu par email)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -90,24 +114,13 @@ export function App() {
         const fullAuthData = await supabaseBackend.buildSessionUser(session);
         if (fullAuthData) {
           setAuthData(fullAuthData);
-          setViewMode('APP'); // Ouvre directement l'application !
-          // Nettoie l'URL des tokens pour une adresse propre
+          setViewMode('APP');
           if (typeof window !== 'undefined' && window.location.hash) {
             window.history.replaceState({}, document.title, window.location.pathname);
           }
         }
       } else if (event === 'SIGNED_OUT') {
         setAuthData(null);
-      }
-    });
-
-    // 2. Vérifie si une session est déjà enregistrée dans le navigateur
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const fullAuthData = await supabaseBackend.buildSessionUser(session);
-        if (fullAuthData) {
-          setAuthData(fullAuthData);
-        }
       }
     });
 
@@ -123,7 +136,7 @@ export function App() {
       authorSingleName: newPostData.authorSingleName || 'Prestataire',
       authorPhotoUrl: newPostData.authorPhotoUrl,
       authorService: newPostData.authorService || 'Services',
-      city: newPostData.city || 'Abidjan',
+      city: newPostData.city || 'Cotonou',
       content: newPostData.content || '',
       imageUrl: newPostData.imageUrl,
       likesCount: 0,
@@ -137,7 +150,7 @@ export function App() {
       id: `req-${Date.now()}`,
       clientId: newReq.clientId || user?.id || 'client-demo',
       clientName: newReq.clientName || 'Client',
-      clientPhone: newReq.clientPhone || '+22507000000',
+      clientPhone: newReq.clientPhone || '+22997000000',
       clientAvatar: newReq.clientAvatar || user?.avatarUrl,
       providerId: newReq.providerId || 'prov-1',
       providerSingleName: newReq.providerSingleName || 'Prestataire',
@@ -145,10 +158,10 @@ export function App() {
       description: newReq.description || '',
       mode: newReq.mode || 'IMMEDIATE',
       scheduledDateTime: newReq.scheduledDateTime,
-      location: newReq.location || 'Abidjan',
+      location: newReq.location || 'Cotonou',
       estimatedPrice: newReq.estimatedPrice || 10000,
       status: 'PENDING',
-      paymentMethod: newReq.paymentMethod || 'ORANGE_MONEY',
+      paymentMethod: newReq.paymentMethod || 'MTN_MOMO',
       createdAt: 'À l’instant',
       hasBeenRated: false,
     };
@@ -208,13 +221,19 @@ export function App() {
     }));
   };
 
+  // Déconnexion complète et protection d'accès
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('sr_session');
+      localStorage.removeItem('sr_token');
+      sessionStorage.clear();
       await supabase.auth.signOut();
     } catch (e) {
-      // Ignorer si déjà déconnecté
+      // Ignorer
     }
     setAuthData(null);
+    // Redirection sécurisée vers la page de connexion
+    navigateTo('/connexion', 'LOGIN');
   };
 
   const handleUpdateUser = (updatedUser: any) => {
@@ -257,9 +276,10 @@ export function App() {
               handleLogout();
               navigateTo('/inscription', 'REGISTER');
             }}
+            onNavigateAuth={(mode) => navigateTo(mode === 'LOGIN' ? '/connexion' : '/inscription', mode)}
           />
         ) : (
-          /* APPLICATION WEB COMPLETE */
+          /* APPLICATION WEB COMPLÈTE */
           <>
             {!user && (
               <AuthView
@@ -319,10 +339,21 @@ export function App() {
         )}
       </main>
 
-      <footer className="bg-white border-t border-slate-200 py-4 px-4 text-center text-xs text-slate-500">
-        <p className="font-semibold">
-          SERVICE RAPIDE © 2026 • Plateforme Panafricaine de Services de Confiance
-        </p>
+      {/* FOOTER AVEC ACCÈS DÉVELOPPEUR */}
+      <footer className="bg-white border-t border-slate-200 py-4 px-4 text-xs text-slate-500">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="font-semibold text-center sm:text-left">
+            SERVICE RAPIDE © 2026 • Plateforme Panafricaine de Services de Confiance
+          </p>
+          <div className="flex items-center gap-4 text-[11px] text-slate-500">
+            <button
+              onClick={() => navigateTo('/connexion', 'LOGIN')}
+              className="hover:text-brand-600 transition underline underline-offset-2 font-medium"
+            >
+              Espace Développeur
+            </button>
+          </div>
+        </div>
       </footer>
     </div>
   );

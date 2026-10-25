@@ -18,9 +18,10 @@ import { AFRICAN_COUNTRIES } from '../types';
 
 interface LandingPageProps {
   onStart: (initialRole?: 'CLIENT' | 'PROVIDER') => void;
+  onNavigateAuth?: (mode: 'LOGIN' | 'REGISTER') => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigateAuth }) => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       {/* 1. HERO SECTION */}
@@ -37,7 +38,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             <span>La 1ère Plateforme Panafricaine de Services Rapides</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight">
+          <h1 className="text-3xl sm:5xl md:text-6xl font-black tracking-tight leading-tight">
             Trouvez un prestataire qualifié en Afrique,{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-400">
               en un clin d'œil.
@@ -261,7 +262,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             <span className="font-bold text-white">SERVICE RAPIDE</span>
             <span>— Plateforme Panafricaine</span>
           </div>
-          <p>© 2026 SERVICE RAPIDE. Tous droits réservés.</p>
+
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => (onNavigateAuth ? onNavigateAuth('LOGIN') : onStart('CLIENT'))}
+              className="text-slate-400 hover:text-emerald-400 transition underline underline-offset-2 font-semibold"
+            >
+              Espace Développeur
+            </button>
+            <p>© 2026 SERVICE RAPIDE. Tous droits réservés.</p>
+          </div>
         </div>
       </footer>
     </div>

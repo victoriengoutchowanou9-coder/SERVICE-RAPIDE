@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Briefcase, Sparkles, Check, ArrowRight } from 'lucide-react';
 import { supabaseBackend } from '../config/supabase';
+import { GeoCascadeSelect, GeoSelection } from './GeoCascadeSelect';
 
 interface RoleSelectionModalProps {
   user?: any;
@@ -19,9 +20,16 @@ export const RoleSelectionModal: React.FC<RoleSelectionModalProps> = ({
   // Informations initiales si Prestataire
   const [singleName, setSingleName] = useState(user?.firstName || '');
   const [serviceOffered, setServiceOffered] = useState('');
-  const [city, setCity] = useState(user?.city || 'Abidjan');
-  const [department, setDepartment] = useState(user?.department || 'Centre');
   const [phone, setPhone] = useState(user?.phoneNumber || '');
+
+  // Localisation en cascade
+  const [geo, setGeo] = useState<GeoSelection>({
+    country: user?.country || 'Bénin',
+    countryCode: user?.countryCode || 'BJ',
+    department: user?.department || '',
+    commune: user?.commune || '',
+    city: user?.city || '',
+  });
 
   const handleConfirm = async () => {
     if (!selectedRole) return;
@@ -29,12 +37,17 @@ export const RoleSelectionModal: React.FC<RoleSelectionModalProps> = ({
 
     const targetUserId = user?.id || token || '';
 
-    const payload: any = { role: selectedRole };
+    const payload: any = {
+      role: selectedRole,
+      country: geo.country,
+      department: geo.department,
+      commune: geo.commune,
+      city: geo.city,
+    };
+
     if (selectedRole === 'PROVIDER') {
       payload.singleName = singleName || user?.firstName || 'Professionnel';
       payload.serviceOffered = serviceOffered || 'Services Généraux';
-      payload.city = city || 'Abidjan';
-      payload.department = department || 'Centre';
       payload.phoneNumber = phone;
       payload.whatsappNumber = phone;
     }
@@ -70,134 +83,109 @@ export const RoleSelectionModal: React.FC<RoleSelectionModalProps> = ({
           {/* Option Client */}
           <div
             onClick={() => setSelectedRole('CLIENT')}
-            className={`cursor-pointer rounded-2xl p-4 border-2 transition relative flex flex-col justify-between ${
+            className={`cursor-pointer rounded-2xl p-4 border transition-all ${
               selectedRole === 'CLIENT'
-                ? 'border-brand-600 bg-emerald-50/50 shadow-md'
+                ? 'border-brand-600 bg-brand-50/50 shadow-md ring-2 ring-brand-500/20'
                 : 'border-slate-200 hover:border-slate-300 bg-white'
             }`}
           >
-            {selectedRole === 'CLIENT' && (
-              <div className="absolute top-3 right-3 w-5 h-5 bg-brand-600 text-white rounded-full flex items-center justify-center text-xs">
-                <Check className="w-3.5 h-3.5" />
-              </div>
-            )}
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-9 h-9 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center font-bold">
                 <User className="w-5 h-5" />
               </div>
-              <h4 className="text-sm font-bold text-slate-900">Je suis Client</h4>
-              <p className="text-xs text-slate-500 mt-1">
-                Je cherche un professionnel de confiance (plombier, mécanicien, etc.).
-              </p>
+              {selectedRole === 'CLIENT' && (
+                <div className="w-5 h-5 rounded-full bg-brand-600 text-white flex items-center justify-center">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+              )}
             </div>
-            <div className="mt-3 pt-2 border-t border-slate-100">
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                🎁 1 semaine gratuite offerte
-              </span>
-            </div>
+            <h4 className="text-sm font-black text-slate-900">Espace Client</h4>
+            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+              Pour trouver et contacter rapidement des artisans et prestataires qualifiés.
+            </p>
           </div>
 
           {/* Option Prestataire */}
           <div
             onClick={() => setSelectedRole('PROVIDER')}
-            className={`cursor-pointer rounded-2xl p-4 border-2 transition relative flex flex-col justify-between ${
+            className={`cursor-pointer rounded-2xl p-4 border transition-all ${
               selectedRole === 'PROVIDER'
-                ? 'border-brand-600 bg-emerald-50/50 shadow-md'
+                ? 'border-emerald-600 bg-emerald-50/50 shadow-md ring-2 ring-emerald-500/20'
                 : 'border-slate-200 hover:border-slate-300 bg-white'
             }`}
           >
-            {selectedRole === 'PROVIDER' && (
-              <div className="absolute top-3 right-3 w-5 h-5 bg-brand-600 text-white rounded-full flex items-center justify-center text-xs">
-                <Check className="w-3.5 h-3.5" />
-              </div>
-            )}
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
                 <Briefcase className="w-5 h-5" />
               </div>
-              <h4 className="text-sm font-bold text-slate-900">Je suis Prestataire</h4>
-              <p className="text-xs text-slate-500 mt-1">
-                Je propose mes services et compétences pour trouver des clients.
-              </p>
+              {selectedRole === 'PROVIDER' && (
+                <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+              )}
             </div>
-            <div className="mt-3 pt-2 border-t border-slate-100">
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                🎁 1 mois gratuit offert
-              </span>
-            </div>
+            <h4 className="text-sm font-black text-slate-900">Prestataire Pro</h4>
+            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+              Pour proposer vos compétences, recevoir des appels et des opportunités.
+            </p>
           </div>
         </div>
 
-        {/* Détails complémentaires si Prestataire */}
-        {selectedRole === 'PROVIDER' && (
-          <div className="mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-            <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Profil Professionnel Initial
-            </h5>
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                Un seul nom (visible par les clients)
-              </label>
-              <input
-                type="text"
-                placeholder="Ex: Moussa, Koffi, Fatou, Jean"
-                value={singleName}
-                onChange={(e) => setSingleName(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Service proposé
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Électricien"
-                  value={serviceOffered}
-                  onChange={(e) => setServiceOffered(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                />
+        {/* 2. LOCALISATION EN CASCADE */}
+        {selectedRole && (
+          <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
+            <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+              Votre Localisation
+            </h4>
+            <GeoCascadeSelect
+              initialValues={{
+                country: geo.country,
+                countryCode: geo.countryCode,
+                department: geo.department,
+                commune: geo.commune,
+                city: geo.city,
+              }}
+              onChange={setGeo}
+              required={true}
+              compact={true}
+            />
+
+            {selectedRole === 'PROVIDER' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-200">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Nom commercial ou Prénom
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    placeholder="Ex: Kouamé Élec"
+                    value={singleName}
+                    onChange={(e) => setSingleName(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Métier / Spécialité
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    placeholder="Ex: Électricien, Plombier..."
+                    value={serviceOffered}
+                    onChange={(e) => setServiceOffered(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Ville
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Cotonou, Dakar..."
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Département / Commune
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Littoral, Plateau"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Téléphone / WhatsApp
-                </label>
-                <input
-                  type="tel"
-                  placeholder="+225 / +229..."
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                />
-              </div>
-            </div>
+            )}
           </div>
         )}
 

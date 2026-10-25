@@ -30,7 +30,14 @@ export interface AuthPayload {
   lastName?: string;
   phoneNumber?: string;
   countryCode?: string;
+  country?: string;
+  department?: string;
+  commune?: string;
+  city?: string;
+  role?: 'CLIENT' | 'PROVIDER';
   preferredLanguage?: string;
+  serviceOffered?: string;
+  isRegister?: boolean;
 }
 
 export interface ChooseRolePayload {
@@ -39,76 +46,158 @@ export interface ChooseRolePayload {
   serviceOffered?: string;
   city?: string;
   department?: string;
+  commune?: string;
+  country?: string;
   phoneNumber?: string;
   whatsappNumber?: string;
 }
 
 export const supabaseBackend = {
   /**
-   * 1. Authentification unifiée (Connexion ou Inscription automatique)
+   * 1. Authentification unifiée (Connexion ou Inscription avec serveur et Supabase)
    */
   async loginOrRegister(payload: AuthPayload) {
-    if (!isSupabaseConfigured) {
-      throw new Error("Configuration Supabase manquante : veuillez renseigner VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.");
+    const isRegisterMode = Boolean(payload.isRegister || (payload.firstName && payload.lastName));
+    const cleanEmail = payload.email.toLowerCase().trim();
+
+    // 1. TENTATIVE VIA LE SERVEUR D'AUTHENTIFICATION DÉDIÉ (/api/auth)
+    try {
+      const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+      const bodyPayload = isRegisterMode
+        ? {
+            email: cleanEmail,
+            password: payload.password,
+            firstName: payload.firstName,
+            lastName: payload.lastName,
+            phoneNumber: payload.phoneNumber,
+            role: payload.role || 'CLIENT',
+            country: payload.country,
+            countryCode: payload.countryCode || 'BJ',
+            department: payload.department,
+            commune: payload.commune,
+            city: payload.city,
+            serviceOffered: payload.serviceOffered,
+          }
+        : {
+            emailOrIdentifier: cleanEmail,
+            password: payload.password,
+          };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyPayload),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.user) {
+        // Enregistrement persistant de la session locale
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('sr_session', JSON.stringify(data));
+            if (data.accessToken) localStorage.setItem('sr_token', data.accessToken);
+          } catch (e) {}
+        }
+
+        return {
+          accessToken: data.accessToken || '',
+          isNewUser: isRegisterMode,
+          requiresOtp: false,
+          message: data.message || 'Authentification réussie',
+          user: data.user,
+        };
+      } else if (!res.ok) {
+        throw new Error(data.error || 'Identifiant ou mot de passe incorrect.');
+      }
+    } catch (apiErr: any) {
+      if (
+        apiErr.message?.includes('incorrect') ||
+        apiErr.message?.includes('existe déjà') ||
+        apiErr.message?.includes('obligatoire') ||
+        apiErr.message?.includes('Format')
+      ) {
+        throw apiErr;
+      }
+      console.warn('API locale /api/auth indisponible, tentative via client Supabase direct:', apiErr.message);
     }
 
-    let email = payload.email.toLowerCase().trim();
-    // Support de l'identifiant développeur sur le formulaire ordinaire
+    // 2. FALLBACK SUPABASE DIRECT SI LE CLIENT EST CONFIGURÉ
+    if (!isSupabaseConfigured) {
+      throw new Error("Identifiant ou mot de passe incorrect.");
+    }
+
+    let email = cleanEmail;
     if (email === 'developer_admin' || email === 'developer') {
       email = 'developer_admin@servicerapide.africa';
     }
     const password = payload.password || 'serviceRapide2025!';
 
-    // Tentative de connexion
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // Tentative de connexion Supabase
+    if (!isRegisterMode) {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (!signInError && signInData?.user) {
-      // Utilisateur existant connecté
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', signInData.user.id)
-        .maybeSingle();
+      if (!signInError && signInData?.user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', signInData.user.id)
+          .maybeSingle();
 
-      const { data: providerProfile } = await supabase
-        .from('provider_profiles')
-        .select('*')
-        .eq('userId', signInData.user.id)
-        .maybeSingle();
+        const { data: providerProfile } = await supabase
+          .from('provider_profiles')
+          .select('*')
+          .eq('userId', signInData.user.id)
+          .maybeSingle();
 
-      return {
-        accessToken: signInData.session?.access_token || '',
-        isNewUser: false,
-        requiresOtp: false,
-        message: 'Connexion réussie',
-        user: {
-          id: signInData.user.id,
-          email: signInData.user.email,
-          firstName: profile?.firstName || signInData.user.user_metadata?.firstName || '',
-          lastName: profile?.lastName || signInData.user.user_metadata?.lastName || '',
-          role: profile?.role || 'PENDING',
-          countryCode: profile?.countryCode || payload.countryCode || 'CI',
-          preferredLanguage: profile?.preferredLanguage || 'fr',
-          avatarUrl: profile?.avatarUrl || '',
-          phoneNumber: profile?.phoneNumber || '',
-          clientTrialExpiresAt: profile?.clientTrialExpiresAt,
-          clientSubscriptionExpiresAt: profile?.clientSubscriptionExpiresAt,
-          createdAt: profile?.createdAt || signInData.user.created_at,
-          providerProfile: providerProfile || null,
-        },
-      };
+        const sessionUser = {
+          accessToken: signInData.session?.access_token || '',
+          isNewUser: false,
+          requiresOtp: false,
+          message: 'Connexion réussie',
+          user: {
+            id: signInData.user.id,
+            email: signInData.user.email,
+            firstName: profile?.firstName || signInData.user.user_metadata?.firstName || '',
+            lastName: profile?.lastName || signInData.user.user_metadata?.lastName || '',
+            role: profile?.role || 'PENDING',
+            countryCode: profile?.countryCode || payload.countryCode || 'BJ',
+            country: profile?.country || payload.country || '',
+            department: profile?.department || payload.department || '',
+            commune: profile?.commune || payload.commune || '',
+            city: profile?.city || payload.city || '',
+            preferredLanguage: profile?.preferredLanguage || 'fr',
+            avatarUrl: profile?.avatarUrl || '',
+            phoneNumber: profile?.phoneNumber || '',
+            clientTrialExpiresAt: profile?.clientTrialExpiresAt,
+            clientSubscriptionExpiresAt: profile?.clientSubscriptionExpiresAt,
+            createdAt: profile?.createdAt || signInData.user.created_at,
+            providerProfile: providerProfile || null,
+          },
+        };
+
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('sr_session', JSON.stringify(sessionUser));
+            if (sessionUser.accessToken) localStorage.setItem('sr_token', sessionUser.accessToken);
+          } catch (e) {}
+        }
+
+        return sessionUser;
+      }
+
+      throw new Error('Identifiant ou mot de passe incorrect.');
     }
 
-    // Origine dynamique pour le lien de confirmation (évite la redirection vers localhost)
+    // Inscription Supabase
     const currentOrigin =
       typeof window !== 'undefined' && window.location.origin
         ? window.location.origin
         : 'https://servicerapide.vercel.app';
 
-    // Inscription automatique si l'utilisateur n'existe pas
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -118,7 +207,11 @@ export const supabaseBackend = {
           firstName: payload.firstName,
           lastName: payload.lastName,
           phoneNumber: payload.phoneNumber,
-          countryCode: payload.countryCode || 'CI',
+          countryCode: payload.countryCode || 'BJ',
+          country: payload.country,
+          department: payload.department,
+          commune: payload.commune,
+          city: payload.city,
           preferredLanguage: payload.preferredLanguage || 'fr',
         },
       },
@@ -134,15 +227,19 @@ export const supabaseBackend = {
     return {
       accessToken: session?.access_token || '',
       isNewUser: true,
-      requiresOtp: !session, // Si confirmation d'email activée sur Supabase
+      requiresOtp: !session,
       message: !session
         ? 'Un code de confirmation a été envoyé à votre adresse email.'
         : 'Compte créé avec succès',
       user: {
         id: user?.id || '',
         email: user?.email || email,
-        role: 'PENDING',
-        countryCode: payload.countryCode || 'CI',
+        role: payload.role || 'PENDING',
+        countryCode: payload.countryCode || 'BJ',
+        country: payload.country,
+        department: payload.department,
+        commune: payload.commune,
+        city: payload.city,
         preferredLanguage: payload.preferredLanguage || 'fr',
       },
     };
@@ -163,105 +260,113 @@ export const supabaseBackend = {
     });
 
     if (error) {
-      // Essai en type 'email' si non 'signup'
-      const { data: retryData, error: retryError } = await supabase.auth.verifyOtp({
-        email: email.trim().toLowerCase(),
-        token: otp.trim(),
-        type: 'email',
-      });
-      if (retryError) throw new Error(retryError.message);
-      return retryData;
+      throw new Error(error.message);
     }
 
     return data;
   },
 
   /**
-   * 3. Renvoyer un code OTP / lien de confirmation
+   * 3. Renvoi du code OTP
    */
   async resendOtp(email: string) {
     if (!isSupabaseConfigured) {
       throw new Error("Configuration Supabase manquante.");
     }
 
-    const currentOrigin =
-      typeof window !== 'undefined' && window.location.origin
-        ? window.location.origin
-        : 'https://servicerapide.vercel.app';
-
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: email.trim().toLowerCase(),
-      options: {
-        emailRedirectTo: currentOrigin,
-      },
     });
 
-    if (error) throw new Error(error.message);
-    return { message: 'Nouveau lien et code de confirmation envoyés par email' };
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { message: 'Nouveau code envoyé par email.' };
   },
 
   /**
-   * Construit la session complète lors d'un clic sur le lien de confirmation d'email
+   * 4. Reconstruction des données utilisateur complètes à partir d'une session Supabase
    */
   async buildSessionUser(session: any) {
     if (!session?.user) return null;
 
-    const { data: profile } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', session.user.id)
-      .maybeSingle();
+    try {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle();
 
-    const { data: providerProfile } = await supabase
-      .from('provider_profiles')
-      .select('*')
-      .eq('userId', session.user.id)
-      .maybeSingle();
+      const { data: providerProfile } = await supabase
+        .from('provider_profiles')
+        .select('*')
+        .eq('userId', session.user.id)
+        .maybeSingle();
 
-    return {
-      accessToken: session.access_token || '',
-      isNewUser: false,
-      requiresOtp: false,
-      message: 'Connexion automatique réussie',
-      user: {
-        id: session.user.id,
-        email: session.user.email,
-        firstName: profile?.firstName || session.user.user_metadata?.firstName || '',
-        lastName: profile?.lastName || session.user.user_metadata?.lastName || '',
-        role: profile?.role || 'PENDING',
-        countryCode: profile?.countryCode || session.user.user_metadata?.countryCode || 'CI',
-        preferredLanguage: profile?.preferredLanguage || session.user.user_metadata?.preferredLanguage || 'fr',
-        avatarUrl: profile?.avatarUrl || '',
-        phoneNumber: profile?.phoneNumber || '',
-        clientTrialExpiresAt: profile?.clientTrialExpiresAt,
-        clientSubscriptionExpiresAt: profile?.clientSubscriptionExpiresAt,
-        createdAt: profile?.createdAt || session.user.created_at,
-        providerProfile: providerProfile || null,
-      },
-    };
+      return {
+        accessToken: session.access_token || '',
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          firstName: profile?.firstName || session.user.user_metadata?.firstName || '',
+          lastName: profile?.lastName || session.user.user_metadata?.lastName || '',
+          role: profile?.role || session.user.user_metadata?.role || 'CLIENT',
+          countryCode: profile?.countryCode || 'BJ',
+          country: profile?.country || '',
+          department: profile?.department || '',
+          commune: profile?.commune || '',
+          city: profile?.city || '',
+          preferredLanguage: profile?.preferredLanguage || 'fr',
+          avatarUrl: profile?.avatarUrl || '',
+          phoneNumber: profile?.phoneNumber || '',
+          clientTrialExpiresAt: profile?.clientTrialExpiresAt,
+          clientSubscriptionExpiresAt: profile?.clientSubscriptionExpiresAt,
+          createdAt: profile?.createdAt || session.user.created_at,
+          providerProfile: providerProfile || null,
+        },
+      };
+    } catch (e) {
+      return {
+        accessToken: session.access_token || '',
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          firstName: session.user.user_metadata?.firstName || '',
+          lastName: session.user.user_metadata?.lastName || '',
+          role: session.user.user_metadata?.role || 'CLIENT',
+          countryCode: 'BJ',
+          preferredLanguage: 'fr',
+        },
+      };
+    }
   },
 
   /**
-   * 4. Sélection du rôle et initialisation du profil
+   * 5. Attribution du rôle et initialisation du profil
    */
   async chooseRole(userId: string, payload: ChooseRolePayload) {
     if (!isSupabaseConfigured || !userId) {
       return { role: payload.role };
     }
 
-    // Sécurité stricte : seuls les rôles CLIENT et PROVIDER peuvent être choisis publiquement
     if (payload.role !== 'CLIENT' && payload.role !== 'PROVIDER') {
       throw new Error("Rôle non autorisé pour l'attribution publique.");
     }
 
-    // 1. Mettre à jour le rôle dans public.users
     await supabase
       .from('users')
-      .update({ role: payload.role })
+      .update({
+        role: payload.role,
+        country: payload.country,
+        department: payload.department,
+        commune: payload.commune,
+        city: payload.city,
+        updatedAt: new Date().toISOString(),
+      })
       .eq('id', userId);
 
-    // 2. Si PRESTATAIRE, créer ou mettre à jour le profil prestataire
     if (payload.role === 'PROVIDER') {
       const { data: existing } = await supabase
         .from('provider_profiles')
@@ -273,8 +378,10 @@ export const supabaseBackend = {
         userId,
         singleName: payload.singleName || 'Professionnel',
         serviceOffered: payload.serviceOffered || 'Services Généraux',
-        city: payload.city || 'Abidjan',
-        department: payload.department || 'Centre',
+        country: payload.country || '',
+        city: payload.city || 'Cotonou',
+        department: payload.department || 'Littoral',
+        commune: payload.commune || '',
         whatsappNumber: payload.whatsappNumber || payload.phoneNumber || '',
         directPhoneNumber: payload.phoneNumber || '',
         availability: 'AVAILABLE',
@@ -296,7 +403,7 @@ export const supabaseBackend = {
   },
 
   /**
-   * 5. Changement de disponibilité 1-clic (Disponible / Occupé)
+   * 6. Changement de disponibilité 1-clic (Disponible / Occupé)
    */
   async updateAvailability(userId: string, availability: 'AVAILABLE' | 'BUSY') {
     if (!isSupabaseConfigured || !userId) return;
@@ -308,7 +415,7 @@ export const supabaseBackend = {
   },
 
   /**
-   * 6. Sauvegarde du profil prestataire
+   * 7. Sauvegarde du profil prestataire
    */
   async updateProviderProfile(userId: string, profileData: any) {
     if (!isSupabaseConfigured || !userId) return;
@@ -319,8 +426,10 @@ export const supabaseBackend = {
         singleName: profileData.singleName,
         fullName: profileData.fullName,
         serviceOffered: profileData.serviceOffered,
+        country: profileData.country,
         city: profileData.city,
         department: profileData.department,
+        commune: profileData.commune,
         receivesOnSite: profileData.receivesOnSite,
         travelRequired: profileData.travelRequired,
         travelFee: profileData.travelFee,
@@ -335,9 +444,22 @@ export const supabaseBackend = {
   },
 
   /**
-   * 7. Sauvegarde du profil client
+   * 8. Sauvegarde du profil client
    */
-  async updateClientProfile(userId: string, data: { firstName?: string; lastName?: string; phoneNumber?: string; avatarUrl?: string; city?: string }) {
+  async updateClientProfile(
+    userId: string,
+    data: {
+      firstName?: string;
+      lastName?: string;
+      phoneNumber?: string;
+      avatarUrl?: string;
+      country?: string;
+      countryCode?: string;
+      department?: string;
+      commune?: string;
+      city?: string;
+    }
+  ) {
     if (!isSupabaseConfigured || !userId) return;
     await supabase
       .from('users')
@@ -346,13 +468,18 @@ export const supabaseBackend = {
         lastName: data.lastName,
         phoneNumber: data.phoneNumber,
         avatarUrl: data.avatarUrl,
+        country: data.country,
+        countryCode: data.countryCode,
+        department: data.department,
+        commune: data.commune,
+        city: data.city,
         updatedAt: new Date().toISOString(),
       })
       .eq('id', userId);
   },
 
   /**
-   * 8. Historique des paiements de l'utilisateur
+   * 9. Historique des paiements de l'utilisateur
    */
   async getPaymentHistory(userId: string) {
     if (!isSupabaseConfigured || !userId) return [];
@@ -373,7 +500,7 @@ export const supabaseBackend = {
   },
 
   /**
-   * 9. Récupérer les contacts déjà débloqués par un client
+   * 10. Récupérer les contacts déjà débloqués par un client
    */
   async getContactUnlocks(clientId: string) {
     if (!isSupabaseConfigured || !clientId) return [];
@@ -390,7 +517,7 @@ export const supabaseBackend = {
   },
 
   /**
-   * 10. Rechargement des données fraîches de l'utilisateur
+   * 11. Rechargement des données fraîches de l'utilisateur
    */
   async refreshUserData(userId: string) {
     if (!isSupabaseConfigured || !userId) return null;

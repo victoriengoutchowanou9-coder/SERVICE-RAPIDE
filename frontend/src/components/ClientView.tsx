@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   ListFilter,
   ArrowUpDown,
+  LogOut,
 } from 'lucide-react';
 import { ProviderItem, PostItem, ServiceRequest } from '../types';
 import { AdsSection } from './AdsSection';
@@ -44,6 +45,7 @@ interface ClientViewProps {
   onUpdateUser: (updatedUser: any) => void;
   onAddServiceRequest?: (req: Partial<ServiceRequest>) => void;
   onSubmitReview?: (providerId: string, rating: number, comment: string) => void;
+  onLogout?: () => void;
 }
 
 export const ClientView: React.FC<ClientViewProps> = ({
@@ -57,6 +59,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
   onUpdateUser,
   onAddServiceRequest,
   onSubmitReview,
+  onLogout,
 }) => {
   const [activeTab, setActiveTab] = useState<'PROVIDERS' | 'REQUESTS' | 'FEED' | 'ADS'>('PROVIDERS');
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -283,188 +286,203 @@ export const ClientView: React.FC<ClientViewProps> = ({
   const availableNowCount = currentProviders.filter((p) => p.availability === 'AVAILABLE').length;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-      {/* Profil Client & Actions Rapides */}
-      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="relative shrink-0">
-            <img
-              src={
-                user?.avatarUrl ||
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
-              }
-              alt="Profil Client"
-              className="w-14 h-14 rounded-2xl object-cover ring-2 ring-brand-500/30"
-            />
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="flex flex-col lg:flex-row items-start gap-6">
+        {/* COLONNE GAUCHE VERTICALE : TOUS LES BOUTONS ALIGNÉS À GAUCHE */}
+        <aside className="w-full lg:w-72 shrink-0 space-y-3">
+          {/* Identité Client */}
+          <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-xs flex items-center gap-3">
+            <div className="relative shrink-0">
+              <img
+                src={
+                  user?.avatarUrl ||
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+                }
+                alt="Profil Client"
+                className="w-12 h-12 rounded-2xl object-cover ring-2 ring-brand-500/30"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-black text-slate-900 truncate">
+                {user?.firstName || 'Client'} {user?.lastName || ''}
+              </h3>
+              <p className="text-[11px] text-slate-500 font-semibold truncate">
+                {isSubActive
+                  ? '⭐ Abonnement Actif'
+                  : isTrialActive
+                  ? `🎁 Essai (${daysLeftTrial}j restant)`
+                  : '🔒 Essai Expiré'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm sm:text-base font-black text-slate-900">
-              {user?.firstName || 'Client'} {user?.lastName || ''}
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {isSubActive ? (
-                <span className="text-emerald-700 font-bold">
-                  ⭐ Abonnement Client Actif (jusqu'au {subExpires?.toLocaleDateString()})
-                </span>
-              ) : isTrialActive ? (
-                <span className="text-emerald-700 font-bold">
-                  🎁 Semaine d'essai gratuite : {daysLeftTrial} jour(s) restant(s)
-                </span>
-              ) : (
-                <span className="text-rose-600 font-bold">
-                  🔒 Période gratuite terminée • Abonnement requis
-                </span>
-              )}
-            </p>
+
+          {/* GROUPE DE BOUTONS VERTICAUX */}
+          <div className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-xs flex flex-col gap-1.5">
+            {/* 1. Bouton Profil */}
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(true)}
+              className="w-full inline-flex items-center gap-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-3 rounded-2xl text-xs shadow-xs transition"
+            >
+              <User className="w-4 h-4 text-emerald-400" />
+              <span>Mon Profil & Abonnement</span>
+            </button>
+
+            {/* 2. Onglet Prestataires */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('PROVIDERS')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center justify-between text-xs font-bold ${
+                activeTab === 'PROVIDERS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Briefcase className="w-4 h-4 text-brand-600" />
+                <span>Prestataires</span>
+              </div>
+              <span className="text-[10px] font-black bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                {availableNowCount}
+              </span>
+            </button>
+
+            {/* 3. Onglet Mes Réservations */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('REQUESTS')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center justify-between text-xs font-bold ${
+                activeTab === 'REQUESTS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Clock className="w-4 h-4 text-amber-600" />
+                <span>Mes Réservations</span>
+              </div>
+              <span className="text-[10px] font-black bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                {clientRequests.length}
+              </span>
+            </button>
+
+            {/* 4. Onglet Fil d'Actualité */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('FEED')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center gap-2.5 text-xs font-bold ${
+                activeTab === 'FEED' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Rss className="w-4 h-4 text-blue-600" />
+              <span>Fil d'Actualité</span>
+            </button>
+
+            {/* 5. Onglet Publicités */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('ADS')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center gap-2.5 text-xs font-bold ${
+                activeTab === 'ADS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Megaphone className="w-4 h-4 text-amber-500" />
+              <span>Faire une Publicité</span>
+            </button>
+
+            {/* 6. Bouton Support 24/7 */}
+            <button
+              type="button"
+              onClick={() => setShowSupportModal(true)}
+              className="w-full inline-flex items-center gap-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold px-3.5 py-2.5 rounded-2xl text-xs transition border border-slate-100"
+            >
+              <LifeBuoy className="w-4 h-4 text-brand-600" />
+              <span>Support Client 24/7</span>
+            </button>
+
+            {/* 7. Bouton Déconnexion (aligné au vertical à gauche) */}
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="w-full inline-flex items-center gap-2.5 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 font-bold px-3.5 py-2.5 rounded-2xl text-xs transition border border-rose-200 shadow-2xs mt-2"
+              >
+                <LogOut className="w-4 h-4 text-rose-600" />
+                <span>Se déconnecter</span>
+              </button>
+            )}
           </div>
-        </div>
+        </aside>
 
-        {/* Boutons d'action regroupés du même côté et parfaitement alignés */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setShowSupportModal(true)}
-            className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 font-bold px-3.5 py-2.5 min-h-[40px] rounded-xl text-xs transition border border-slate-200 shadow-2xs"
-          >
-            <LifeBuoy className="w-4 h-4 text-brand-600" />
-            <span>Support 24/7</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('ADS')}
-            className="inline-flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold px-3.5 py-2.5 min-h-[40px] rounded-xl text-xs transition border border-amber-200"
-          >
-            <Megaphone className="w-4 h-4 text-amber-600" />
-            <span>Faire une publicité</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowProfileModal(true)}
-            className="inline-flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2.5 min-h-[40px] rounded-xl text-xs shadow-xs transition"
-          >
-            <User className="w-4 h-4" />
-            <span>Mon Profil & Abonnement</span>
-          </button>
-        </div>
-      </div>
-
-      {/* BANNIÈRE D'ÉTAT DE L'ABONNEMENT ET DE L'ESSAI GRATUIT (RÈGLE MÉTIER CLIENT 7 JOURS) */}
-      <div
-        className={`rounded-3xl p-4 sm:p-5 border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs ${
-          hasAccess
-            ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-white border-emerald-200'
-            : 'bg-gradient-to-r from-rose-50 via-rose-50/70 to-white border-rose-200'
-        }`}
-      >
-        <div className="flex items-start sm:items-center gap-3">
+        {/* COLONNE DROITE : CONTENU PRINCIPAL */}
+        <div className="flex-1 w-full min-w-0 space-y-5">
+          {/* BANNIÈRE D'ÉTAT DE L'ABONNEMENT ET DE L'ESSAI GRATUIT (7 JOURS) */}
           <div
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-              hasAccess ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+            className={`rounded-3xl p-4 sm:p-5 border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs ${
+              hasAccess
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-white border-emerald-200'
+                : 'bg-gradient-to-r from-rose-50 via-rose-50/70 to-white border-rose-200'
             }`}
           >
-            {hasAccess ? <Sparkles className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                Statut de mon accès client
-              </span>
-              <span
-                className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-                  hasAccess ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+            <div className="flex items-start sm:items-center gap-3">
+              <div
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                  hasAccess ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
                 }`}
               >
-                {isSubActive
-                  ? 'Abonnement Actif'
-                  : isTrialActive
-                  ? `Essai Gratuit (${daysLeftTrial}j)`
-                  : 'Essai Expiré'}
-              </span>
+                {hasAccess ? <Sparkles className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    Statut de mon accès client
+                  </span>
+                  <span
+                    className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                      hasAccess ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                    }`}
+                  >
+                    {isSubActive
+                      ? 'Abonnement Actif'
+                      : isTrialActive
+                      ? `Essai Gratuit (${daysLeftTrial}j)`
+                      : 'Essai Expiré'}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm font-black text-slate-900 mt-0.5">
+                  {isSubActive
+                    ? `Abonnement client valable jusqu'au ${subExpires?.toLocaleDateString()} • Contacts illimités`
+                    : isTrialActive
+                    ? `Semaine offerte active jusqu'au ${trialExpires?.toLocaleDateString()} • Tous les contacts sont accessibles`
+                    : 'Période gratuite de 7 jours terminée : veuillez souscrire pour continuer à voir les contacts.'}
+                </p>
+              </div>
             </div>
-            <p className="text-xs sm:text-sm font-black text-slate-900 mt-0.5">
-              {isSubActive
-                ? `Abonnement client valable jusqu'au ${subExpires?.toLocaleDateString()} • Contacts illimités`
-                : isTrialActive
-                ? `Semaine offerte active jusqu'au ${trialExpires?.toLocaleDateString()} • Tous les contacts sont accessibles`
-                : 'Période gratuite de 7 jours terminée : veuillez souscrire pour continuer à voir les contacts.'}
-            </p>
+
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
+              {!hasAccess ? (
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(true)}
+                  className="inline-flex items-center justify-center gap-2 min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition w-full sm:w-auto"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>S'abonner / Débloquer les contacts</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(true)}
+                  className="inline-flex items-center justify-center gap-1.5 min-h-[38px] px-4 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition w-full sm:w-auto"
+                >
+                  <span>Détails de mon pass</span>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Bouton d'action de la bannière abonnement */}
-        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
-          {!hasAccess ? (
-            <button
-              type="button"
-              onClick={() => setShowProfileModal(true)}
-              className="inline-flex items-center justify-center gap-2 min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition w-full sm:w-auto"
-            >
-              <CreditCard className="w-4 h-4" />
-              <span>S'abonner / Débloquer les contacts</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowProfileModal(true)}
-              className="inline-flex items-center justify-center gap-1.5 min-h-[38px] px-4 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition w-full sm:w-auto"
-            >
-              <span>Détails de mon pass</span>
-            </button>
+          {actionMsg && (
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{actionMsg}</span>
+            </div>
           )}
-        </div>
-      </div>
-
-      {actionMsg && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{actionMsg}</span>
-        </div>
-      )}
-
-      {/* Barre d'onglets pour le Client */}
-      <div className="flex bg-slate-100 p-1.5 rounded-2xl text-xs font-bold gap-1 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('PROVIDERS')}
-          className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeTab === 'PROVIDERS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-          }`}
-        >
-          <Briefcase className="w-3.5 h-3.5 text-brand-600" />
-          <span>Prestataires ({availableNowCount} Disponibles)</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('REQUESTS')}
-          className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeTab === 'REQUESTS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5 text-amber-600" />
-          <span>Mes Réservations ({clientRequests.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('FEED')}
-          className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeTab === 'FEED' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-          }`}
-        >
-          <Rss className="w-3.5 h-3.5 text-blue-600" />
-          <span>Fil d'Actualité</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('ADS')}
-          className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeTab === 'ADS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-          }`}
-        >
-          <Megaphone className="w-3.5 h-3.5 text-amber-500" />
-          <span>Publicités & Offres</span>
-        </button>
-      </div>
 
       {/* ONGLET 1 : RECHERCHE NATURELLE & LISTE DES PRESTATAIRES */}
       {activeTab === 'PROVIDERS' && (
@@ -954,6 +972,8 @@ export const ClientView: React.FC<ClientViewProps> = ({
           <AdsSection />
         </div>
       )}
+        </div>
+      </div>
 
       {/* Modal Support 24/7 */}
       {showSupportModal && <SupportModal onClose={() => setShowSupportModal(false)} />}

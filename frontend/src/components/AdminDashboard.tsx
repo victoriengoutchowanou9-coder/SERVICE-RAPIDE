@@ -12,13 +12,16 @@ import {
   Trash2,
   Eye,
   DollarSign,
+  LogOut,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface AdminDashboardProps {
   token: string;
+  onLogout?: () => void;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'METRICS' | 'REFUNDS' | 'SETTINGS' | 'ADS'>('METRICS');
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -94,57 +97,92 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-      {/* En-tête Administration */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">
-            Supervision & Administration Centrale
-          </h2>
-          <p className="text-xs text-slate-500">
-            Gestion des flux, règlements, remboursements manuels et politiques tarifaires.
-          </p>
-        </div>
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="flex flex-col lg:flex-row items-start gap-6">
+        {/* COLONNE GAUCHE VERTICALE : TOUS LES BOUTONS ALIGNÉS À GAUCHE */}
+        <aside className="w-full lg:w-72 shrink-0 space-y-3">
+          {/* Identité Espace Développeur & Administration */}
+          <div className="bg-slate-900 rounded-3xl p-5 text-white shadow-md space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider">
+              <span>● Accès Superviseur Actif</span>
+            </div>
+            <h3 className="text-base font-black tracking-tight">Espace Développeur</h3>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              Supervision de l'ensemble de la plateforme SERVICE RAPIDE Panafrique.
+            </p>
+          </div>
 
-        {/* Navigation des Onglets */}
-        <div className="flex bg-slate-100 p-1 rounded-2xl text-xs font-bold gap-1">
-          <button
-            onClick={() => setActiveTab('METRICS')}
-            className={`px-3 py-1.5 rounded-xl transition ${
-              activeTab === 'METRICS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-            }`}
-          >
-            Métriques
-          </button>
-          <button
-            onClick={() => setActiveTab('REFUNDS')}
-            className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
-              activeTab === 'REFUNDS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-            }`}
-          >
-            <span>Remboursements</span>
-            {refundRequests.filter((r) => r.status === 'PENDING').length > 0 && (
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
+          {/* GROUPE DE BOUTONS VERTICAUX */}
+          <div className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-xs flex flex-col gap-1.5">
+            {/* 1. Onglet Métriques */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('METRICS')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center gap-2.5 text-xs font-bold ${
+                activeTab === 'METRICS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Briefcase className="w-4 h-4 text-brand-600" />
+              <span>Métriques & Flux</span>
+            </button>
+
+            {/* 2. Onglet Remboursements */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('REFUNDS')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center justify-between text-xs font-bold ${
+                activeTab === 'REFUNDS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <RotateCcw className="w-4 h-4 text-rose-600" />
+                <span>Remboursements</span>
+              </div>
+              {refundRequests.filter((r) => r.status === 'PENDING').length > 0 && (
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+              )}
+            </button>
+
+            {/* 3. Onglet Prix & Périodes */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('SETTINGS')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center gap-2.5 text-xs font-bold ${
+                activeTab === 'SETTINGS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Sliders className="w-4 h-4 text-slate-700" />
+              <span>Politiques Tarifaires</span>
+            </button>
+
+            {/* 4. Onglet Publicités */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('ADS')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center gap-2.5 text-xs font-bold ${
+                activeTab === 'ADS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Megaphone className="w-4 h-4 text-amber-500" />
+              <span>Campagnes Publicitaires</span>
+            </button>
+
+            {/* 5. Bouton Déconnexion (aligné au vertical à gauche) */}
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="w-full inline-flex items-center gap-2.5 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 font-bold px-3.5 py-2.5 rounded-2xl text-xs transition border border-rose-200 shadow-2xs mt-3"
+              >
+                <LogOut className="w-4 h-4 text-rose-600" />
+                <span>Se déconnecter</span>
+              </button>
             )}
-          </button>
-          <button
-            onClick={() => setActiveTab('SETTINGS')}
-            className={`px-3 py-1.5 rounded-xl transition ${
-              activeTab === 'SETTINGS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-            }`}
-          >
-            Prix & Périodes
-          </button>
-          <button
-            onClick={() => setActiveTab('ADS')}
-            className={`px-3 py-1.5 rounded-xl transition ${
-              activeTab === 'ADS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-            }`}
-          >
-            Publicités
-          </button>
-        </div>
-      </div>
+          </div>
+        </aside>
+
+        {/* COLONNE DROITE : CONTENU PRINCIPAL */}
+        <div className="flex-1 w-full min-w-0 space-y-6">
 
       {feedback && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
@@ -431,6 +469,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ token }) => {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 };

@@ -25,6 +25,8 @@ import {
   ShieldAlert,
   Sparkles,
   AlertCircle,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { FeedPosts } from './FeedPosts';
 import { AdsSection } from './AdsSection';
@@ -41,6 +43,7 @@ interface ProviderDashboardProps {
   onAddPost: (post: Partial<PostItem>) => void;
   onUpdateRequestStatus?: (requestId: string, status: 'ACCEPTED' | 'REJECTED' | 'COMPLETED' | 'PAID') => void;
   onUpdateProviderProfile?: (updatedProfile: any) => void;
+  onLogout?: () => void;
 }
 
 export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
@@ -51,6 +54,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   onAddPost,
   onUpdateRequestStatus,
   onUpdateProviderProfile,
+  onLogout,
 }) => {
   const [profile, setProfile] = useState<any>(
     user.providerProfile || {
@@ -290,212 +294,226 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-      {/* 1. NOTIFICATION AVANT EXPIRATION (SI MOINS DE 7 JOURS RESTANTS) */}
-      {isExpiringSoon && (
-        <div className="p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5" />
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="flex flex-col lg:flex-row items-start gap-6">
+        {/* COLONNE GAUCHE VERTICALE : TOUS LES BOUTONS ALIGNÉS À GAUCHE */}
+        <aside className="w-full lg:w-72 shrink-0 space-y-3">
+          {/* Identité Prestataire */}
+          <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-xs flex items-center gap-3">
+            <div className="relative shrink-0">
+              <img
+                src={
+                  profile.photoUrl ||
+                  user?.avatarUrl ||
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+                }
+                alt="Profil Prestataire"
+                className="w-12 h-12 rounded-2xl object-cover ring-2 ring-emerald-500/30"
+              />
+              <span
+                className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${
+                  isAvailable ? 'bg-emerald-500' : 'bg-rose-500'
+                }`}
+              />
             </div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-wider text-amber-800">
-                Alerte avant expiration
-              </p>
-              <p className="text-xs sm:text-sm font-bold text-amber-950 mt-0.5">
-                Votre période d'essai gratuit de 30 jours se termine dans {daysLeftSub} jour(s) (le {expiresDate.toLocaleDateString()}).
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-black text-slate-900 truncate">
+                {profile.singleName || 'Professionnel'}
+              </h3>
+              <p className="text-[11px] text-slate-500 font-semibold truncate">
+                {profile.serviceOffered || 'Services Pro'}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowSubModal(true)}
-            className="w-full sm:w-auto inline-flex items-center justify-center min-h-[40px] px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black shadow-xs transition"
-          >
-            Renouveler dès maintenant
-          </button>
-        </div>
-      )}
 
-      {/* 2. BANNIÈRE DE STATUT ABONNEMENT ET FACTURATION */}
-      <div
-        className={`rounded-3xl p-5 border shadow-xs transition ${
-          isSubActive
-            ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-white border-emerald-200'
-            : 'bg-gradient-to-r from-rose-50 via-rose-50/70 to-white border-rose-200'
-        }`}
-      >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                isSubActive ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+          {/* GROUPE DE BOUTONS VERTICAUX */}
+          <div className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-xs flex flex-col gap-1.5">
+            {/* 1. Bouton Disponibilité 1-clic */}
+            <button
+              type="button"
+              onClick={toggleAvailability}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center justify-between text-xs font-black shadow-xs ${
+                !isSubActive
+                  ? 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
+                  : isAvailable
+                  ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300'
+                  : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-300'
               }`}
             >
-              <CreditCard className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Statut Abonnement Prestataire
-                </span>
-                <span
-                  className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-                    isSubActive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                  }`}
-                >
-                  {isSubActive ? `Actif (${daysLeftSub} jours)` : 'Expiré (Profil Masqué)'}
-                </span>
+              <div className="flex items-center gap-2">
+                <Power className="w-4 h-4" />
+                <span>{isAvailable ? 'Disponible MAINTENANT' : 'Actuellement Occupé'}</span>
               </div>
-              <p className="text-sm font-black text-slate-900 mt-0.5">
-                {isSubActive
-                  ? `Valide jusqu'au ${expiresDate.toLocaleDateString()} • Visibilité maximale auprès des clients`
-                  : 'Période gratuite de 30 jours terminée (5 000 FCFA/mois requis)'}
-              </p>
-            </div>
-          </div>
+              <span className={`w-2 h-2 rounded-full ${isAvailable ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+            </button>
 
-          {/* Boutons d'action regroupés et parfaitement alignés */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 w-full sm:w-auto">
+            {/* 2. Bouton Mon Entreprise & Tarifs */}
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('PROFILE')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center gap-2.5 text-xs font-bold ${
+                activeSubTab === 'PROFILE' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <User className="w-4 h-4 text-emerald-600" />
+              <span>Mon Entreprise & Profil</span>
+            </button>
+
+            {/* 3. Onglet Demandes Reçues */}
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('MISSIONS')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center justify-between text-xs font-bold ${
+                activeSubTab === 'MISSIONS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Briefcase className="w-4 h-4 text-brand-600" />
+                <span>Demandes Reçues</span>
+              </div>
+              {pendingMissionsCount > 0 && (
+                <span className="text-[10px] font-black bg-rose-500 text-white px-2 py-0.5 rounded-full">
+                  {pendingMissionsCount}
+                </span>
+              )}
+            </button>
+
+            {/* 4. Onglet Mes Chantiers & Fil */}
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('FEED')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center gap-2.5 text-xs font-bold ${
+                activeSubTab === 'FEED' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Rss className="w-4 h-4 text-blue-600" />
+              <span>Mes Réalisations & Fil</span>
+            </button>
+
+            {/* 5. Onglet Publicités Panafricaines */}
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('ADS')}
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center gap-2.5 text-xs font-bold ${
+                activeSubTab === 'ADS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Megaphone className="w-4 h-4 text-amber-500" />
+              <span>Publicités Panafricaines</span>
+            </button>
+
+            {/* 6. Onglet Facturation & Historique */}
             <button
               type="button"
               onClick={() => setActiveSubTab('BILLING')}
-              className="inline-flex items-center justify-center min-h-[42px] px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition"
+              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center gap-2.5 text-xs font-bold ${
+                activeSubTab === 'BILLING' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
+              }`}
             >
-              Historique des paiements
+              <CreditCard className="w-4 h-4 text-slate-600" />
+              <span>Historique Facturation</span>
             </button>
+
+            {/* 7. Bouton Abonnement / Renouvellement */}
             <button
               type="button"
               onClick={() => setShowSubModal(true)}
-              className="inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-xs transition gap-1.5"
+              className="w-full inline-flex items-center gap-2.5 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white font-black px-3.5 py-2.5 rounded-2xl text-xs shadow-xs transition mt-1"
             >
-              <CreditCard className="w-4 h-4" />
-              <span>{isSubActive ? 'Renouveler (5 000 FCFA)' : 'S’abonner (5 000 FCFA / mois)'}</span>
+              <Sparkles className="w-4 h-4" />
+              <span>{isSubActive ? 'Renouveler Abonnement' : 'Activer Abonnement'}</span>
             </button>
+
+            {/* 8. Bouton Déconnexion (aligné au vertical à gauche) */}
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="w-full inline-flex items-center gap-2.5 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 font-bold px-3.5 py-2.5 rounded-2xl text-xs transition border border-rose-200 shadow-2xs mt-2"
+              >
+                <LogOut className="w-4 h-4 text-rose-600" />
+                <span>Se déconnecter</span>
+              </button>
+            )}
           </div>
-        </div>
-      </div>
+        </aside>
 
-      {successMsg && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
-          <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{successMsg}</span>
-        </div>
-      )}
+        {/* COLONNE DROITE : CONTENU PRINCIPAL */}
+        <div className="flex-1 w-full min-w-0 space-y-5">
+          {/* 1. NOTIFICATION AVANT EXPIRATION */}
+          {isExpiringSoon && (
+            <div className="p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wider text-amber-800">
+                    Alerte avant expiration
+                  </p>
+                  <p className="text-xs sm:text-sm font-bold text-amber-950 mt-0.5">
+                    Votre période d'essai gratuit de 30 jours se termine dans {daysLeftSub} jour(s) (le {expiresDate.toLocaleDateString()}).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSubModal(true)}
+                className="w-full sm:w-auto inline-flex items-center justify-center min-h-[40px] px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black shadow-xs transition"
+              >
+                Renouveler dès maintenant
+              </button>
+            </div>
+          )}
 
-      {/* DISPONIBILITÉ EN TEMPS RÉEL (1 CLIC) */}
-      <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+          {/* 2. BANNIÈRE DE STATUT ABONNEMENT ET FACTURATION */}
           <div
-            className={`w-4 h-4 rounded-full ring-4 transition ${
-              !isSubActive
-                ? 'bg-slate-400 ring-slate-100'
-                : isAvailable
-                ? 'bg-emerald-500 ring-emerald-100 animate-pulse'
-                : 'bg-rose-500 ring-rose-100'
+            className={`rounded-3xl p-5 border shadow-xs transition ${
+              isSubActive
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-white border-emerald-200'
+                : 'bg-gradient-to-r from-rose-50 via-rose-50/70 to-white border-rose-200'
             }`}
-          />
-          <div>
-            <p className="text-sm font-black text-slate-900">
-              {!isSubActive
-                ? '⚠️ Statut Suspendu (Abonnement expiré)'
-                : isAvailable
-                ? '🟢 Vous êtes Disponible MAINTENANT'
-                : '🔴 Actuellement Occupé'}
-            </p>
-            <p className="text-xs text-slate-500">
-              {!isSubActive
-                ? 'Renouvelez votre abonnement mensuel (5 000 FCFA) pour réactiver votre disponibilité et recevoir les demandes.'
-                : isAvailable
-                ? 'Les clients vous voient en tête de liste et peuvent réserver immédiatement ou programmer un créneau.'
-                : 'Votre profil apparaît comme "Occupé" : les réservations immédiates sont suspendues.'}
-            </p>
+          >
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                    isSubActive ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                  }`}
+                >
+                  <CreditCard className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Statut Abonnement Prestataire
+                    </span>
+                    <span
+                      className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                        isSubActive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                      }`}
+                    >
+                      {isSubActive ? `Actif (${daysLeftSub} jours)` : 'Expiré (Profil Masqué)'}
+                    </span>
+                  </div>
+                  <p className="text-sm font-black text-slate-900 mt-0.5">
+                    {isSubActive
+                      ? `Valide jusqu'au ${expiresDate.toLocaleDateString()} • Visibilité maximale auprès des clients`
+                      : 'Période gratuite de 30 jours terminée (5 000 FCFA/mois requis)'}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={toggleAvailability}
-          className={`inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl font-bold text-xs transition shrink-0 gap-2 ${
-            !isSubActive
-              ? 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
-              : isAvailable
-              ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
-              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-          }`}
-        >
-          <Power className="w-4 h-4" />
-          <span>
-            {!isSubActive
-              ? 'Activer mon statut'
-              : isAvailable
-              ? 'Passer en Occupé'
-              : 'Passer en Disponible'}
-          </span>
-        </button>
-      </div>
+          {successMsg && (
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{successMsg}</span>
+            </div>
+          )}
 
-      {/* Barre d'onglets pour le Prestataire */}
-      <div className="flex bg-slate-100 p-1.5 rounded-2xl text-xs font-bold gap-1 overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('MISSIONS')}
-          className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeSubTab === 'MISSIONS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-          }`}
-        >
-          <Briefcase className="w-3.5 h-3.5 text-brand-600" />
-          <span>
-            Demandes Reçues {pendingMissionsCount > 0 && `(${pendingMissionsCount})`}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('PROFILE')}
-          className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeSubTab === 'PROFILE' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-          }`}
-        >
-          <Camera className="w-3.5 h-3.5 text-slate-700" />
-          <span>Profil, Tarifs & Zones</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('BILLING')}
-          className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeSubTab === 'BILLING' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-          }`}
-        >
-          <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Abonnement & Facturation</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('FEED')}
-          className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeSubTab === 'FEED' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-          }`}
-        >
-          <Rss className="w-3.5 h-3.5 text-blue-600" />
-          <span>Fil d'Actualité</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('ADS')}
-          className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeSubTab === 'ADS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-          }`}
-        >
-          <Megaphone className="w-3.5 h-3.5 text-amber-500" />
-          <span>Publicités</span>
-        </button>
-      </div>
-
-      {/* ONGLET 1 : DEMANDES DE MISSIONS REÇUES (IMMEDIAT + PROGRAMME) */}
+          {/* ONGLET 1 : DEMANDES DE MISSIONS REÇUES (IMMEDIAT + PROGRAMME) */}
       {activeSubTab === 'MISSIONS' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -1295,6 +1313,8 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
           <AdsSection />
         </div>
       )}
+        </div>
+      </div>
 
       {/* MODAL PAIEMENT ABONNEMENT PRESTATAIRE */}
       {showSubModal && (

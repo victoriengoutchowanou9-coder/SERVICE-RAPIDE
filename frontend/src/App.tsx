@@ -257,6 +257,7 @@ export function App() {
         onLogout={handleLogout}
         onGoHome={() => navigateTo('/', 'REGISTER')}
         onNavigateAuth={(mode) => navigateTo(mode === 'LOGIN' ? '/connexion' : '/inscription', mode)}
+        isAuthPage={!user && viewMode === 'APP'}
       />
 
       {paymentAlert && (
@@ -314,6 +315,7 @@ export function App() {
                 onAddPost={handleAddPost}
                 onUpdateRequestStatus={handleUpdateRequestStatus}
                 onUpdateProviderProfile={handleUpdateProviderProfile}
+                onLogout={handleLogout}
               />
             )}
 
@@ -329,11 +331,12 @@ export function App() {
                 onUpdateUser={handleUpdateUser}
                 onAddServiceRequest={handleAddServiceRequest}
                 onSubmitReview={handleSubmitReview}
+                onLogout={handleLogout}
               />
             )}
 
             {user && (user.role === 'ADMIN' || user.role === 'DEVELOPER' || user.role === 'developer') && (
-              <AdminDashboard token={token} />
+              <AdminDashboard token={token} onLogout={handleLogout} />
             )}
           </>
         )}

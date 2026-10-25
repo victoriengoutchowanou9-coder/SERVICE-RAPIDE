@@ -64,9 +64,19 @@ export const AuthView: React.FC<AuthViewProps> = ({
   // Code indicatif téléphonique dynamique (+229, +225, etc.)
   const phoneDialCode = getDialCodeForCountry(geo.countryCode);
 
-  // OTP
+  // OTP & Confirmation Email
   const [otpCode, setOtpCode] = useState('');
   const [otpInfoMsg, setOtpInfoMsg] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Compte à rebours de 60 secondes pour le renvoi d'e-mail / OTP
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   // États UI
   const [showPassword, setShowPassword] = useState(false);
@@ -182,14 +192,21 @@ export const AuthView: React.FC<AuthViewProps> = ({
         isRegister: mode === 'REGISTER',
       });
 
-      if (data.requiresOtp) {
+      if (data.requiresOtp || (data as any).requiresEmailConfirmation) {
         setMode('OTP');
+        setResendCooldown(60);
         setOtpInfoMsg(data.message || `Un code de confirmation a été envoyé à ${cleanInput}.`);
       } else {
         onSuccess(data);
       }
     } catch (err: any) {
-      setError(err.message || 'Une erreur est survenue lors de l\'authentification.');
+      if (err.requiresEmailConfirmation) {
+        setMode('OTP');
+        setResendCooldown(60);
+        setOtpInfoMsg(err.message || 'Votre e-mail n\'a pas encore été confirmé. Un code de validation vous a été envoyé.');
+      } else {
+        setError(err.message || 'Une erreur est survenue lors de l\'authentification.');
+      }
     } finally {
       setLoading(false);
     }
@@ -201,7 +218,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setError(null);
 
     if (otpCode.length !== 6) {
-      setError('Le code OTP doit être composé de 6 chiffres.');
+      setError('Le code de confirmation doit être composé de 6 chiffres.');
       return;
     }
 
@@ -213,7 +230,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
       onSuccess({
         accessToken: data?.accessToken || `sr_session_${Date.now()}`,
-        user: {
+        user: data?.user || {
           email: cleanEmail,
           firstName,
           lastName,
@@ -228,20 +245,22 @@ export const AuthView: React.FC<AuthViewProps> = ({
         },
       });
     } catch (err: any) {
-      setError(err.message || 'Code OTP invalide ou expiré.');
+      setError(err.message || 'Code de confirmation invalide ou expiré.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Renvoi d'OTP
+  // Renvoi d'OTP / e-mail de confirmation
   const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
     setLoading(true);
     setError(null);
     try {
       const cleanEmail = emailOrIdentifier.trim().toLowerCase();
       const data: any = await supabaseBackend.resendOtp(cleanEmail);
       setOtpInfoMsg(data.message || 'Nouveau code envoyé par email.');
+      setResendCooldown(60);
     } catch (err: any) {
       setError(err.message || 'Impossible de renvoyer le code pour le moment.');
     } finally {
@@ -325,11 +344,16 @@ export const AuthView: React.FC<AuthViewProps> = ({
             <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
               <button
                 type="button"
+                disabled={loading || resendCooldown > 0}
                 onClick={handleResendOtp}
-                className="text-brand-600 font-bold hover:underline flex items-center gap-1"
+                className="text-brand-600 font-bold hover:underline flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
               >
-                <RefreshCw className="w-3 h-3" />
-                <span>Renvoyer le code</span>
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                <span>
+                  {resendCooldown > 0
+                    ? `Renvoyer le code (${resendCooldown}s)`
+                    : "Renvoyer l'e-mail de confirmation"}
+                </span>
               </button>
 
               <button

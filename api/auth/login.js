@@ -64,8 +64,9 @@ module.exports = async (req, res) => {
     lookupEmail = 'developer_admin@servicerapide.africa';
   }
 
-  // Chiffres nettoyés pour recherche par numéro de téléphone
-  const cleanDigits = rawLogin.replace(/\D/g, '');
+  // Recherche par numéro de téléphone uniquement si la saisie ne contient pas d'arobase
+  const isEmailInput = rawLogin.includes('@');
+  const cleanDigits = isEmailInput ? '' : rawLogin.replace(/\D/g, '');
 
   const pgClient = new Client({
     host: process.env.DB_HOST || 'aws-0-eu-west-1.pooler.supabase.com',
@@ -99,6 +100,7 @@ module.exports = async (req, res) => {
         u."createdAt", 
         u."isActive",
         au.encrypted_password,
+        au.email_confirmed_at,
         (au.encrypted_password = crypt($2, au.encrypted_password)) AS auth_pwd_match,
         u."passwordHash"
       FROM auth.users au
@@ -106,7 +108,7 @@ module.exports = async (req, res) => {
       WHERE LOWER(au.email) = LOWER($1) 
          OR (u.identifier IS NOT NULL AND LOWER(u.identifier) = LOWER($1))
          OR (u.email IS NOT NULL AND LOWER(u.email) = LOWER($1))
-         OR (u."phoneNumber" IS NOT NULL AND $3 != '' AND (
+         OR (u."phoneNumber" IS NOT NULL AND length(regexp_replace(u."phoneNumber", '\\D', '', 'g')) >= 6 AND $3 != '' AND (
              u."phoneNumber" = $1
              OR regexp_replace(u."phoneNumber", '\\D', '', 'g') = $3
              OR regexp_replace(u."phoneNumber", '\\D', '', 'g') LIKE '%' || $3
@@ -118,16 +120,18 @@ module.exports = async (req, res) => {
     const result = await pgClient.query(query, [lookupEmail, inputPassword, cleanDigits]);
 
     if (result.rows.length === 0) {
-      // Deuxième tentative : recherche directe dans public.users si l'utilisateur y figure seul
+      // Deuxième tentative : recherche directe dans public.users avec vérification auth.users
       const pubUserRes = await pgClient.query(`
-        SELECT * FROM public.users 
-        WHERE LOWER(email) = LOWER($1) 
-           OR (identifier IS NOT NULL AND LOWER(identifier) = LOWER($1))
-           OR ($3 != '' AND (
-               "phoneNumber" = $1
-               OR regexp_replace("phoneNumber", '\\D', '', 'g') = $3
-               OR regexp_replace("phoneNumber", '\\D', '', 'g') LIKE '%' || $3
-               OR $3 LIKE '%' || regexp_replace("phoneNumber", '\\D', '', 'g')
+        SELECT u.*, au.email_confirmed_at
+        FROM public.users u
+        LEFT JOIN auth.users au ON au.id = u.id OR LOWER(au.email) = LOWER(u.email)
+        WHERE LOWER(u.email) = LOWER($1) 
+           OR (u.identifier IS NOT NULL AND LOWER(u.identifier) = LOWER($1))
+           OR ($3 != '' AND length(regexp_replace(u."phoneNumber", '\\D', '', 'g')) >= 6 AND (
+               u."phoneNumber" = $1
+               OR regexp_replace(u."phoneNumber", '\\D', '', 'g') = $3
+               OR regexp_replace(u."phoneNumber", '\\D', '', 'g') LIKE '%' || $3
+               OR $3 LIKE '%' || regexp_replace(u."phoneNumber", '\\D', '', 'g')
            ))
         LIMIT 1;
       `, [lookupEmail, cleanDigits]);
@@ -151,10 +155,16 @@ module.exports = async (req, res) => {
         await pgClient.end();
         return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect.' });
       }
-      const verifyRes = await pgClient.query(`SELECT (crypt($1, $2) = $2) AS match;`, [inputPassword, pUser.passwordHash || '']);
-      if (!verifyRes.rows[0]?.match) {
+
+      // Contrôle de confirmation d'email obligatoire
+      const isDevAdminFallback = (pUser.email && pUser.email.toLowerCase() === 'developer_admin@servicerapide.africa') || pUser.role === 'ADMIN';
+      if (!isDevAdminFallback && !pUser.email_confirmed_at) {
         await pgClient.end();
-        return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect.' });
+        return res.status(403).json({
+          error: "Votre adresse e-mail n'a pas encore été confirmée. Veuillez valider votre e-mail avant de vous connecter.",
+          requiresEmailConfirmation: true,
+          email: pUser.email,
+        });
       }
 
       const jwtSecret = process.env.JWT_SECRET || 'super_secret_jwt_key_service_rapide_afrique_2025_secure';
@@ -204,6 +214,17 @@ module.exports = async (req, res) => {
     if (!isPasswordValid) {
       await pgClient.end();
       return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect.' });
+    }
+
+    // Contrôle de confirmation d'email obligatoire
+    const isDevAdmin = (row.email && row.email.toLowerCase() === 'developer_admin@servicerapide.africa') || row.role === 'ADMIN';
+    if (!isDevAdmin && !row.email_confirmed_at) {
+      await pgClient.end();
+      return res.status(403).json({
+        error: "Votre adresse e-mail n'a pas encore été confirmée. Veuillez valider votre e-mail avant de vous connecter.",
+        requiresEmailConfirmation: true,
+        email: row.email,
+      });
     }
 
     // Profil prestataire éventuel

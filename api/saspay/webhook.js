@@ -50,7 +50,31 @@ module.exports = async (req, res) => {
     data.status === 'PAID';
 
   if (!isSuccess) {
-    // Si ce n'est pas un événement de succès (ex: en attente ou échec), acquitter simplement
+    // Si échec ou annulation de paiement : suspendre explicitement la publicité
+    const metadata = data.metadata || {};
+    const adId = metadata.adId;
+    if (adId) {
+      const pgClientFail = new Client({
+        host: process.env.DB_HOST || 'aws-0-eu-west-1.pooler.supabase.com',
+        port: parseInt(process.env.DB_PORT || '6543'),
+        user: process.env.DB_USERNAME || 'postgres.gsgbvoyddagpjldgeyqk',
+        password: process.env.DB_PASSWORD || 'BI6PbBYPGqNFppwx',
+        database: process.env.DB_NAME || 'postgres',
+        ssl: { rejectUnauthorized: false },
+      });
+      try {
+        await pgClientFail.connect();
+        await pgClientFail.query(`
+          UPDATE public.advertisements
+          SET status = 'PAYMENT_FAILED', "isActive" = false, "updatedAt" = NOW()
+          WHERE id::text = $1 AND status != 'ACTIVE';
+        `, [adId]);
+        await pgClientFail.end();
+        console.log(`❌ Publicité ${adId} marquée PAYMENT_FAILED suite à webhook échec SasPay.`);
+      } catch (err) {
+        try { await pgClientFail.end(); } catch (e) {}
+      }
+    }
     return res.status(200).json({ received: true, status: 'acknowledged' });
   }
 
@@ -169,36 +193,58 @@ module.exports = async (req, res) => {
     // 4. Si c'est une publication de publicité payante (1 000 FCFA / semaine)
     if (action === 'AD_PUBLICATION') {
       const durationWeeks = Math.max(1, parseInt(metadata.durationWeeks || 1, 10));
+      const adId = metadata.adId;
       const adTitle = metadata.title || 'Annonce sponsorisée';
       const adContent = metadata.content || '';
       const adUrl = metadata.targetUrl || '';
       const adImage = metadata.imageUrl || '';
+      const ref = data.reference || data.id || `SASPAY-${Date.now()}`;
+
       try {
-        await pgClient.query(`
-          INSERT INTO public.advertisements (
-            id,
-            title,
-            content,
-            "imageUrl",
-            "targetUrl",
-            "isActive",
-            "createdAt",
-            "updatedAt"
-          )
-          VALUES (
-            gen_random_uuid(),
-            $1,
-            $2,
-            $3,
-            $4,
-            true,
-            NOW(),
-            NOW() + ($5 || ' days')::interval
-          );
-        `, [adTitle, adContent, adImage, adUrl, durationWeeks * 7]);
-        console.log(`✅ Publicité activée pour ${durationWeeks} semaines (${durationWeeks * 1000} FCFA)`);
+        if (adId) {
+          const updateRes = await pgClient.query(`
+            UPDATE public.advertisements
+            SET
+              status = 'ACTIVE',
+              "isActive" = true,
+              "startDate" = COALESCE("startDate", NOW()),
+              "endDate" = NOW() + ($1 || ' days')::interval,
+              "paymentReference" = $2,
+              "updatedAt" = NOW()
+            WHERE id::text = $3;
+          `, [durationWeeks * 7, ref, adId]);
+
+          if (updateRes.rowCount > 0) {
+            console.log(`✅ Publicité existante ${adId} ACTIVÉE pour ${durationWeeks} semaines.`);
+          } else {
+            // Insertion si elle n'existait pas
+            await pgClient.query(`
+              INSERT INTO public.advertisements (
+                id,
+                title,
+                content,
+                "imageUrl",
+                "targetUrl",
+                "isActive",
+                status,
+                "durationWeeks",
+                "amountPaid",
+                "startDate",
+                "endDate",
+                "paymentReference",
+                "createdAt",
+                "updatedAt"
+              )
+              VALUES (
+                gen_random_uuid(),
+                $1, $2, $3, $4, true, 'ACTIVE', $5, $6, NOW(), NOW() + ($5 * 7 || ' days')::interval, $7, NOW(), NOW()
+              );
+            `, [adTitle, adContent, adImage, adUrl, durationWeeks, durationWeeks * 1000, ref]);
+            console.log(`✅ Nouvelle publicité créée et activée pour ${durationWeeks} semaines.`);
+          }
+        }
       } catch (adErr) {
-        console.warn('Ad insertion warning :', adErr.message);
+        console.warn('Ad update warning :', adErr.message);
       }
     }
 

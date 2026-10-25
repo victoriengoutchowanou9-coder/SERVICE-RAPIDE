@@ -91,6 +91,18 @@ export const supabaseBackend = {
 
       const data = await res.json();
 
+      if (res.ok && data.requiresEmailConfirmation) {
+        return {
+          accessToken: '',
+          isNewUser: true,
+          requiresOtp: true,
+          requiresEmailConfirmation: true,
+          email: data.email || cleanEmail,
+          message: data.message || 'Un code de confirmation vous a été envoyé par e-mail.',
+          user: data.user,
+        };
+      }
+
       if (res.ok && data.user) {
         // Enregistrement persistant de la session locale
         if (typeof window !== 'undefined') {
@@ -108,14 +120,22 @@ export const supabaseBackend = {
           user: data.user,
         };
       } else if (!res.ok) {
+        if (data.requiresEmailConfirmation) {
+          const confErr: any = new Error(data.error || 'Veuillez confirmer votre adresse e-mail avant de vous connecter.');
+          confErr.requiresEmailConfirmation = true;
+          confErr.email = data.email || cleanEmail;
+          throw confErr;
+        }
         throw new Error(data.error || 'Identifiant ou mot de passe incorrect.');
       }
     } catch (apiErr: any) {
       if (
+        apiErr.requiresEmailConfirmation ||
         apiErr.message?.includes('incorrect') ||
         apiErr.message?.includes('existe déjà') ||
         apiErr.message?.includes('obligatoire') ||
-        apiErr.message?.includes('Format')
+        apiErr.message?.includes('Format') ||
+        apiErr.message?.includes('confirmée')
       ) {
         throw apiErr;
       }
@@ -260,16 +280,45 @@ export const supabaseBackend = {
   },
 
   /**
-   * 2. Validation du code OTP
+   * 2. Validation du code OTP / Confirmation d'email
    */
   async verifyOtp(email: string, otp: string) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanOtp = otp.trim();
+
+    // Tentative via le serveur dédié
+    try {
+      const res = await fetch('/api/auth/confirm-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, token: cleanOtp }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (typeof window !== 'undefined') {
+          try {
+            if (data.accessToken) localStorage.setItem('sr_token', data.accessToken);
+            if (data.user) localStorage.setItem('sr_session', JSON.stringify(data));
+          } catch (e) {}
+        }
+        return data;
+      }
+      if (!res.ok && res.status !== 404) {
+        throw new Error(data.error || 'Code de confirmation invalide.');
+      }
+    } catch (e: any) {
+      if (e.message && !e.message.includes('fetch')) {
+        throw e;
+      }
+    }
+
     if (!isSupabaseConfigured) {
-      throw new Error("Configuration Supabase manquante.");
+      throw new Error("Code de confirmation invalide ou expiré.");
     }
 
     const { data, error } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token: otp.trim(),
+      email: cleanEmail,
+      token: cleanOtp,
       type: 'signup',
     });
 
@@ -281,16 +330,41 @@ export const supabaseBackend = {
   },
 
   /**
-   * 3. Renvoi du code OTP
+   * 3. Renvoi du code OTP / e-mail de confirmation avec délai anti-spam
    */
   async resendOtp(email: string) {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Tentative via le serveur dédié
+    try {
+      const res = await fetch('/api/auth/resend-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        return data;
+      }
+      if (res.status === 429) {
+        throw new Error(data.error || 'Veuillez patienter 60 secondes entre deux envois.');
+      }
+      if (!res.ok && res.status !== 404) {
+        throw new Error(data.error || 'Erreur lors du renvoi du code.');
+      }
+    } catch (e: any) {
+      if (e.message && !e.message.includes('fetch')) {
+        throw e;
+      }
+    }
+
     if (!isSupabaseConfigured) {
-      throw new Error("Configuration Supabase manquante.");
+      throw new Error("Impossible de renvoyer le code pour le moment.");
     }
 
     const { error } = await supabase.auth.resend({
       type: 'signup',
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
     });
 
     if (error) {

@@ -108,7 +108,10 @@ module.exports = async (req, res) => {
     const userIdRes = await pgClient.query(`SELECT gen_random_uuid() AS id;`);
     const newUserId = userIdRes.rows[0].id;
 
-    // 1. Insertion dans auth.users
+    // Génération du code de confirmation à 6 chiffres
+    const confirmationToken = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 1. Insertion dans auth.users avec validation d'email requise (email_confirmed_at = NULL)
     try {
       await pgClient.query(`
         INSERT INTO auth.users (
@@ -117,6 +120,8 @@ module.exports = async (req, res) => {
           email,
           encrypted_password,
           email_confirmed_at,
+          confirmation_token,
+          confirmation_sent_at,
           raw_app_meta_data,
           raw_user_meta_data,
           created_at,
@@ -128,15 +133,17 @@ module.exports = async (req, res) => {
           '00000000-0000-0000-0000-000000000000',
           $2,
           crypt($3, gen_salt('bf')),
+          NULL,
+          $4,
           NOW(),
           '{"provider":"email","providers":["email"]}',
-          json_build_object('firstName', $4::text, 'lastName', $5::text, 'role', $6::text),
+          json_build_object('firstName', $5::text, 'lastName', $6::text, 'role', $7::text),
           NOW(),
           NOW(),
           'authenticated',
           'authenticated'
         );
-      `, [newUserId, cleanEmail, password, firstName.trim(), lastName.trim(), role]);
+      `, [newUserId, cleanEmail, password, confirmationToken, firstName.trim(), lastName.trim(), role]);
     } catch (authErr) {
       console.warn('Note auth.users insert:', authErr.message);
     }
@@ -278,17 +285,13 @@ module.exports = async (req, res) => {
       }
     }
 
-    const jwtSecret = process.env.JWT_SECRET || 'super_secret_jwt_key_service_rapide_afrique_2025_secure';
-    const token = createJwtToken(
-      { sub: createdUser.id, email: createdUser.email, role: createdUser.role },
-      jwtSecret
-    );
-
     await pgClient.end();
 
     return res.status(201).json({
-      message: 'Compte créé avec succès',
-      accessToken: token,
+      message: 'Compte créé avec succès ! Un e-mail avec un code de confirmation vous a été envoyé.',
+      requiresOtp: true,
+      requiresEmailConfirmation: true,
+      email: createdUser.email,
       user: {
         id: createdUser.id,
         email: createdUser.email,

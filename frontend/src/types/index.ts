@@ -140,6 +140,6 @@ export interface AdItem {
   amountPaid?: number;
   startDate?: string;
   endDate?: string;
-  status?: 'ACTIVE' | 'EXPIRED' | 'PENDING_PAYMENT';
+  status?: 'ACTIVE' | 'EXPIRED' | 'PENDING_PAYMENT' | 'PAYMENT_FAILED';
   userId?: string;
 }

@@ -166,6 +166,42 @@ module.exports = async (req, res) => {
       console.log('✅ Contact prestataire débloqué avec succès pour le client !');
     }
 
+    // 4. Si c'est une publication de publicité payante (1 000 FCFA / semaine)
+    if (action === 'AD_PUBLICATION') {
+      const durationWeeks = Math.max(1, parseInt(metadata.durationWeeks || 1, 10));
+      const adTitle = metadata.title || 'Annonce sponsorisée';
+      const adContent = metadata.content || '';
+      const adUrl = metadata.targetUrl || '';
+      const adImage = metadata.imageUrl || '';
+      try {
+        await pgClient.query(`
+          INSERT INTO public.advertisements (
+            id,
+            title,
+            content,
+            "imageUrl",
+            "targetUrl",
+            "isActive",
+            "createdAt",
+            "updatedAt"
+          )
+          VALUES (
+            gen_random_uuid(),
+            $1,
+            $2,
+            $3,
+            $4,
+            true,
+            NOW(),
+            NOW() + ($5 || ' days')::interval
+          );
+        `, [adTitle, adContent, adImage, adUrl, durationWeeks * 7]);
+        console.log(`✅ Publicité activée pour ${durationWeeks} semaines (${durationWeeks * 1000} FCFA)`);
+      } catch (adErr) {
+        console.warn('Ad insertion warning :', adErr.message);
+      }
+    }
+
     await pgClient.end();
     return res.status(200).json({
       success: true,

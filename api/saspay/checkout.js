@@ -29,13 +29,24 @@ module.exports = async (req, res) => {
       metadata = {},
     } = req.body || {};
 
-    if (!amount) {
-      return res.status(400).json({ error: 'Le montant (amount) est obligatoire.' });
+    if (!amount && (!metadata || !metadata.durationWeeks)) {
+      return res.status(400).json({ error: 'Le montant (amount) ou la durée est obligatoire.' });
+    }
+
+    // Calcul et sécurisation stricte du montant côté serveur : 1 000 FCFA / semaine pour les publicités
+    let finalAmount = Number(amount || 0);
+    if (metadata && (metadata.action === 'AD_PUBLICATION' || metadata.type === 'AD')) {
+      const weeks = Math.max(1, parseInt(metadata.durationWeeks || 1, 10));
+      finalAmount = weeks * 1000;
+    } else if (metadata && metadata.action === 'PROVIDER_SUBSCRIPTION') {
+      finalAmount = 5000;
+    } else if (metadata && (metadata.action === 'CLIENT_SUBSCRIPTION' || metadata.action === 'CONTACT_UNLOCK')) {
+      finalAmount = 1000;
     }
 
     // Préparation du payload pour SasPay
     const payload = JSON.stringify({
-      amount: Number(amount).toFixed(2),
+      amount: finalAmount.toFixed(2),
       currency: currency || 'XOF',
       customer_name: customer_name || 'Client SERVICE RAPIDE',
       customer_email: customer_email || 'client@servicerapide.africa',

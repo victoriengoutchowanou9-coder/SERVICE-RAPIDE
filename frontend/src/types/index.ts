@@ -136,4 +136,10 @@ export interface AdItem {
   targetUrl?: string;
   advertiser: string;
   tag: string;
+  durationWeeks?: number;
+  amountPaid?: number;
+  startDate?: string;
+  endDate?: string;
+  status?: 'ACTIVE' | 'EXPIRED' | 'PENDING_PAYMENT';
+  userId?: string;
 }

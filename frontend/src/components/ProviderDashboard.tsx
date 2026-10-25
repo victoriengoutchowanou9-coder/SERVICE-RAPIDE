@@ -44,6 +44,7 @@ interface ProviderDashboardProps {
   onUpdateRequestStatus?: (requestId: string, status: 'ACCEPTED' | 'REJECTED' | 'COMPLETED' | 'PAID') => void;
   onUpdateProviderProfile?: (updatedProfile: any) => void;
   onLogout?: () => void;
+  activeSectionOverride?: string;
 }
 
 export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
@@ -55,6 +56,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   onUpdateRequestStatus,
   onUpdateProviderProfile,
   onLogout,
+  activeSectionOverride,
 }) => {
   const [profile, setProfile] = useState<any>(
     user.providerProfile || {
@@ -83,6 +85,19 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   );
 
   const [activeSubTab, setActiveSubTab] = useState<'MISSIONS' | 'PROFILE' | 'BILLING' | 'FEED' | 'ADS'>('MISSIONS');
+
+  useEffect(() => {
+    if (!activeSectionOverride) return;
+    if (
+      activeSectionOverride === 'MISSIONS' ||
+      activeSectionOverride === 'PROFILE' ||
+      activeSectionOverride === 'FEED' ||
+      activeSectionOverride === 'ADS' ||
+      activeSectionOverride === 'BILLING'
+    ) {
+      setActiveSubTab(activeSectionOverride as any);
+    }
+  }, [activeSectionOverride]);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [showSubModal, setShowSubModal] = useState(false);

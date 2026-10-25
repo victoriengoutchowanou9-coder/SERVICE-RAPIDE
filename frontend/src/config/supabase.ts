@@ -130,6 +130,20 @@ export const supabaseBackend = {
     let email = cleanEmail;
     if (email === 'developer_admin' || email === 'developer') {
       email = 'developer_admin@servicerapide.africa';
+    } else if (!email.includes('@')) {
+      // Recherche de l'email associé au numéro de téléphone ou identifiant
+      try {
+        const { data: userMatch } = await supabase
+          .from('users')
+          .select('email')
+          .or(`phoneNumber.eq.${cleanEmail},identifier.eq.${cleanEmail}`)
+          .maybeSingle();
+        if (userMatch?.email) {
+          email = userMatch.email;
+        }
+      } catch (e) {
+        // Ignorer si échec
+      }
     }
     const password = payload.password || 'serviceRapide2025!';
 

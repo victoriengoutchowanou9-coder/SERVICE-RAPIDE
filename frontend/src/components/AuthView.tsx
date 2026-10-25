@@ -89,8 +89,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
       cleanInput.toLowerCase() === 'developer_admin' ||
       cleanInput.toLowerCase() === 'developer';
 
-    // 1. Validation Email / Identifiant
+    // 1. Validation Email / Téléphone / Identifiant
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const phoneRegex = /^[\+]?[\d\s-]{8,20}$/;
+
     if (mode === 'REGISTER') {
       if (!cleanInput) {
         setError("L'adresse email est obligatoire.");
@@ -101,13 +103,14 @@ export const AuthView: React.FC<AuthViewProps> = ({
         return;
       }
     } else {
-      // Mode LOGIN : Accepte soit un email valide, soit l'identifiant développeur
+      // Mode LOGIN : Accepte un email valide, un numéro de téléphone ou un identifiant
       if (!cleanInput) {
-        setError("Veuillez saisir votre identifiant ou adresse email.");
+        setError("Veuillez saisir votre email, numéro de téléphone ou identifiant.");
         return;
       }
-      if (!emailRegex.test(cleanInput) && !isDevIdentifier) {
-        setError("Identifiant ou format d'adresse email invalide.");
+      const isPhone = phoneRegex.test(cleanInput.replace(/\s/g, ''));
+      if (!emailRegex.test(cleanInput) && !isPhone && !isDevIdentifier) {
+        setError("Veuillez saisir un email, numéro de téléphone ou identifiant valide.");
         return;
       }
     }
@@ -159,9 +162,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setLoading(true);
 
     try {
-      const fullPhone = rawPhoneNumber.trim()
-        ? `${phoneDialCode} ${rawPhoneNumber.trim().replace(/^0+/, '')}`
-        : '';
+      // Sauvegarde du numéro tel que saisi par l'utilisateur (sans indicatif forcé)
+      const fullPhone = rawPhoneNumber.trim();
 
       const data = await supabaseBackend.loginOrRegister({
         email: cleanInput,
@@ -393,10 +395,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </div>
             )}
 
-            {/* EMAIL OU IDENTIFIANT */}
+            {/* EMAIL, TÉLÉPHONE OU IDENTIFIANT */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                {mode === 'REGISTER' ? 'Adresse email *' : 'Email ou Identifiant *'}
+                {mode === 'REGISTER' ? 'Adresse email *' : 'Email, Téléphone ou Identifiant *'}
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -414,45 +416,37 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   placeholder={
                     mode === 'REGISTER'
                       ? 'votre.email@exemple.com'
-                      : 'votre.email@exemple.com ou developer_admin'
+                      : 'votre.email@exemple.com, 97000000 ou identifiant'
                   }
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                 />
               </div>
             </div>
 
-            {/* TÉLÉPHONE AVEC CODE INDICATIF DYNAMIQUE (INSCRIPTION) */}
+            {/* TÉLÉPHONE (INSCRIPTION) SANS PRÉFIXE FORCÉ ET VIDE PAR DÉFAUT */}
             {mode === 'REGISTER' && (
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Numéro de téléphone *
                 </label>
-                <div className="flex items-center gap-2">
-                  {/* Préfixe indicatif international lié au pays sélectionné */}
-                  <div className="shrink-0 bg-slate-100 border border-slate-200 text-slate-800 text-xs font-black px-3 py-2.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
-                    <span>{phoneDialCode}</span>
-                  </div>
-
-                  {/* Saisie du numéro sans les suggestions intempestives */}
-                  <div className="relative flex-1">
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type="tel"
-                      required
-                      autoComplete="off"
-                      autoCorrect="off"
-                      spellCheck={false}
-                      data-lpignore="true"
-                      data-form-type="other"
-                      value={rawPhoneNumber}
-                      onChange={(e) => setRawPhoneNumber(e.target.value.replace(/[^\d\s]/g, ''))}
-                      placeholder="Ex: 97 00 00 00 / 07 00 00 00"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
-                    />
-                  </div>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="tel"
+                    required
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-form-type="other"
+                    value={rawPhoneNumber}
+                    onChange={(e) => setRawPhoneNumber(e.target.value.replace(/[^\d\s\+]/g, ''))}
+                    placeholder="Ex: 97000000 ou +22997000000"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                  />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Format international automatique avec indicatif {phoneDialCode} du pays sélectionné.
+                  Saisissez votre numéro avec ou sans indicatif international (champ libre).
                 </p>
               </div>
             )}

@@ -64,6 +64,9 @@ module.exports = async (req, res) => {
     lookupEmail = 'developer_admin@servicerapide.africa';
   }
 
+  // Chiffres nettoyés pour recherche par numéro de téléphone
+  const cleanDigits = rawLogin.replace(/\D/g, '');
+
   const pgClient = new Client({
     host: process.env.DB_HOST || 'aws-0-eu-west-1.pooler.supabase.com',
     port: parseInt(process.env.DB_PORT || '6543'),
@@ -76,7 +79,7 @@ module.exports = async (req, res) => {
   try {
     await pgClient.connect();
 
-    // 1. Recherche par email ou identifiant dans auth.users et public.users
+    // 1. Recherche par email, identifiant ou numéro de téléphone dans auth.users et public.users
     const query = `
       SELECT 
         u.id, 
@@ -103,26 +106,51 @@ module.exports = async (req, res) => {
       WHERE LOWER(au.email) = LOWER($1) 
          OR (u.identifier IS NOT NULL AND LOWER(u.identifier) = LOWER($1))
          OR (u.email IS NOT NULL AND LOWER(u.email) = LOWER($1))
+         OR (u."phoneNumber" IS NOT NULL AND $3 != '' AND (
+             u."phoneNumber" = $1
+             OR regexp_replace(u."phoneNumber", '\\D', '', 'g') = $3
+             OR regexp_replace(u."phoneNumber", '\\D', '', 'g') LIKE '%' || $3
+             OR $3 LIKE '%' || regexp_replace(u."phoneNumber", '\\D', '', 'g')
+         ))
       LIMIT 1;
     `;
 
-    const result = await pgClient.query(query, [lookupEmail, inputPassword]);
+    const result = await pgClient.query(query, [lookupEmail, inputPassword, cleanDigits]);
 
     if (result.rows.length === 0) {
       // Deuxième tentative : recherche directe dans public.users si l'utilisateur y figure seul
       const pubUserRes = await pgClient.query(`
         SELECT * FROM public.users 
-        WHERE LOWER(email) = LOWER($1) OR (identifier IS NOT NULL AND LOWER(identifier) = LOWER($1))
+        WHERE LOWER(email) = LOWER($1) 
+           OR (identifier IS NOT NULL AND LOWER(identifier) = LOWER($1))
+           OR ($3 != '' AND (
+               "phoneNumber" = $1
+               OR regexp_replace("phoneNumber", '\\D', '', 'g') = $3
+               OR regexp_replace("phoneNumber", '\\D', '', 'g') LIKE '%' || $3
+               OR $3 LIKE '%' || regexp_replace("phoneNumber", '\\D', '', 'g')
+           ))
         LIMIT 1;
-      `, [lookupEmail]);
+      `, [lookupEmail, cleanDigits]);
 
       if (pubUserRes.rows.length === 0) {
         await pgClient.end();
-        return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect.' });
+        return res.status(401).json({ error: 'Identifiant, email ou mot de passe incorrect.' });
       }
 
       const pUser = pubUserRes.rows[0];
+
+      // Vérification compte actif
+      if (pUser.isActive === false) {
+        await pgClient.end();
+        return res.status(403).json({ error: "Ce compte a été suspendu par l'administration. Contactez le support." });
+      }
+
       // Vérification du mot de passe avec crypt
+      const verifyRes = await pgClient.query(`SELECT (crypt($1, $2) = $2) AS match;`, [inputPassword, pUser.passwordHash || '']);
+      if (!verifyRes.rows[0]?.match) {
+        await pgClient.end();
+        return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect.' });
+      }
       const verifyRes = await pgClient.query(`SELECT (crypt($1, $2) = $2) AS match;`, [inputPassword, pUser.passwordHash || '']);
       if (!verifyRes.rows[0]?.match) {
         await pgClient.end();
@@ -157,6 +185,12 @@ module.exports = async (req, res) => {
     }
 
     const row = result.rows[0];
+
+    // Vérification compte actif
+    if (row.isActive === false) {
+      await pgClient.end();
+      return res.status(403).json({ error: "Ce compte a été suspendu par l'administration. Contactez le support." });
+    }
 
     // Vérification du mot de passe
     let isPasswordValid = row.auth_pwd_match === true;

@@ -46,6 +46,7 @@ interface ClientViewProps {
   onAddServiceRequest?: (req: Partial<ServiceRequest>) => void;
   onSubmitReview?: (providerId: string, rating: number, comment: string) => void;
   onLogout?: () => void;
+  activeSectionOverride?: string;
 }
 
 export const ClientView: React.FC<ClientViewProps> = ({
@@ -60,10 +61,24 @@ export const ClientView: React.FC<ClientViewProps> = ({
   onAddServiceRequest,
   onSubmitReview,
   onLogout,
+  activeSectionOverride,
 }) => {
   const [activeTab, setActiveTab] = useState<'PROVIDERS' | 'REQUESTS' | 'FEED' | 'ADS'>('PROVIDERS');
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+
+  React.useEffect(() => {
+    if (!activeSectionOverride) return;
+    if (activeSectionOverride === 'PROFILE') {
+      setShowProfileModal(true);
+    } else if (activeSectionOverride === 'SUPPORT') {
+      setShowSupportModal(true);
+    } else if (activeSectionOverride === 'BOOKINGS' || activeSectionOverride === 'REQUESTS') {
+      setActiveTab('REQUESTS');
+    } else if (activeSectionOverride === 'PROVIDERS' || activeSectionOverride === 'FEED' || activeSectionOverride === 'ADS') {
+      setActiveTab(activeSectionOverride as any);
+    }
+  }, [activeSectionOverride]);
 
   // Modales d'action
   const [unlockModalProvider, setUnlockModalProvider] = useState<ProviderItem | null>(null);

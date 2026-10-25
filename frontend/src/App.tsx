@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
-import { LandingPage } from './components/LandingPage';
+import { NavigationDrawer } from './components/NavigationDrawer';
 import { AuthView } from './components/AuthView';
 import { RoleSelectionModal } from './components/RoleSelectionModal';
 import { ProviderDashboard } from './components/ProviderDashboard';
@@ -12,24 +12,22 @@ import { supabase, supabaseBackend } from './config/supabase';
 export function App() {
   const [country, setCountry] = useState('BJ');
   const [language, setLanguage] = useState('fr');
-  const [viewMode, setViewMode] = useState<'LANDING' | 'APP'>('LANDING'); // Par défaut : Site Web Vitrine
-  const [authInitialMode, setAuthInitialMode] = useState<'LOGIN' | 'REGISTER'>('REGISTER');
+
+  // Par défaut, l'application s'ouvre DIRECTEMENT sur la mire de connexion
+  const [authInitialMode, setAuthInitialMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [authData, setAuthData] = useState<any>(null);
   const [paymentAlert, setPaymentAlert] = useState<string | null>(null);
 
+  // État du menu trois traits (☰)
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeDrawerSection, setActiveDrawerSection] = useState<string>('');
+
   // Navigation interne sans rechargement
-  const navigateTo = (path: string, mode: 'LOGIN' | 'REGISTER' = 'REGISTER') => {
+  const navigateTo = (path: string, mode: 'LOGIN' | 'REGISTER' = 'LOGIN') => {
     setAuthInitialMode(mode);
-    if (path === '/' || path === '/landing') {
-      setViewMode('LANDING');
-      if (typeof window !== 'undefined') {
-        window.history.pushState({}, '', '/');
-      }
-    } else {
-      setViewMode('APP');
-      if (typeof window !== 'undefined') {
-        window.history.pushState({}, '', path);
-      }
+    if (typeof window !== 'undefined') {
+      const targetPath = mode === 'REGISTER' || path === '/inscription' ? '/inscription' : '/connexion';
+      window.history.pushState({}, '', targetPath);
     }
   };
 
@@ -41,11 +39,6 @@ export function App() {
         const parsed = JSON.parse(savedSession);
         if (parsed?.user) {
           setAuthData(parsed);
-          // Si l'utilisateur est développeur ou déjà connecté, on passe à l'APP
-          const pathname = window.location.pathname.toLowerCase();
-          if (pathname !== '/' && pathname !== '/landing') {
-            setViewMode('APP');
-          }
         }
       }
     } catch (e) {
@@ -53,7 +46,7 @@ export function App() {
     }
   }, []);
 
-  // 2. Synchronisation avec l'URL au chargement et retours SasPay
+  // 2. Synchronisation de la route URL et retours de paiements SasPay
   useEffect(() => {
     const handleUrlRoute = () => {
       if (typeof window === 'undefined') return;
@@ -75,19 +68,10 @@ export function App() {
       }
 
       if (pathname === '/inscription' || pathname === '/register') {
-        setViewMode('APP');
         setAuthInitialMode('REGISTER');
-      } else if (pathname === '/connexion' || pathname === '/login') {
-        setViewMode('APP');
+      } else {
+        // Toutes les autres routes (y compris '/' ou '/connexion') ouvrent directement la connexion
         setAuthInitialMode('LOGIN');
-      } else if (pathname === '/developer' || pathname === '/admin') {
-        setViewMode('APP');
-        // Si non authentifié, ouvrir directement le formulaire de connexion
-        if (!authData?.user) {
-          setAuthInitialMode('LOGIN');
-        }
-      } else if (pathname === '/app') {
-        setViewMode('APP');
       }
     };
 
@@ -96,16 +80,16 @@ export function App() {
     return () => window.removeEventListener('popstate', handleUrlRoute);
   }, [authData?.user]);
 
-  // Fil des publications partagé entre prestataires et clients
+  // Publications partagées
   const [posts, setPosts] = useState<PostItem[]>([]);
 
   // Prestataires disponibles
   const [providers, setProviders] = useState<ProviderItem[]>([]);
 
-  // Demandes de services partagées (Maintenant + Programmer)
+  // Demandes de services
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
 
-  // Écoute automatique des liens de confirmation d'email et sessions actives Supabase
+  // Écoute automatique des sessions Supabase
   useEffect(() => {
     const {
       data: { subscription },
@@ -114,7 +98,6 @@ export function App() {
         const fullAuthData = await supabaseBackend.buildSessionUser(session);
         if (fullAuthData) {
           setAuthData(fullAuthData);
-          setViewMode('APP');
           if (typeof window !== 'undefined' && window.location.hash) {
             window.history.replaceState({}, document.title, window.location.pathname);
           }
@@ -150,7 +133,7 @@ export function App() {
       id: `req-${Date.now()}`,
       clientId: newReq.clientId || user?.id || 'client-demo',
       clientName: newReq.clientName || 'Client',
-      clientPhone: newReq.clientPhone || '+22997000000',
+      clientPhone: newReq.clientPhone || '',
       clientAvatar: newReq.clientAvatar || user?.avatarUrl,
       providerId: newReq.providerId || 'prov-1',
       providerSingleName: newReq.providerSingleName || 'Prestataire',
@@ -208,6 +191,9 @@ export function App() {
 
   const handleAuthSuccess = (data: any) => {
     setAuthData(data);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/app');
+    }
   };
 
   const handleRoleChosen = (roleData: any) => {
@@ -221,7 +207,7 @@ export function App() {
     }));
   };
 
-  // Déconnexion complète et protection d'accès
+  // Déconnexion complète
   const handleLogout = async () => {
     try {
       localStorage.removeItem('sr_session');
@@ -232,7 +218,8 @@ export function App() {
       // Ignorer
     }
     setAuthData(null);
-    // Redirection sécurisée vers la page de connexion
+    setDrawerOpen(false);
+    setActiveDrawerSection('');
     navigateTo('/connexion', 'LOGIN');
   };
 
@@ -248,6 +235,19 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900">
+      {/* MENU TIROIR VERTICAL (☰) */}
+      {user && (
+        <NavigationDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          user={user}
+          currentSection={activeDrawerSection}
+          onSelectSection={(sec) => setActiveDrawerSection(sec)}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* EN-TÊTE OFFICIEL DE L'APPLICATION */}
       <Header
         country={country}
         onCountryChange={setCountry}
@@ -255,9 +255,16 @@ export function App() {
         onLanguageChange={setLanguage}
         user={user}
         onLogout={handleLogout}
-        onGoHome={() => navigateTo('/', 'REGISTER')}
+        onGoHome={() => {
+          if (user) {
+            setActiveDrawerSection('');
+          } else {
+            navigateTo('/connexion', 'LOGIN');
+          }
+        }}
         onNavigateAuth={(mode) => navigateTo(mode === 'LOGIN' ? '/connexion' : '/inscription', mode)}
-        isAuthPage={!user && viewMode === 'APP'}
+        isAuthPage={!user}
+        onToggleMenu={() => setDrawerOpen((prev) => !prev)}
       />
 
       {paymentAlert && (
@@ -270,95 +277,79 @@ export function App() {
       )}
 
       <main className="flex-1">
-        {/* SITE WEB VITRINE COMPLET */}
-        {viewMode === 'LANDING' ? (
-          <LandingPage
-            onStart={() => {
-              handleLogout();
-              navigateTo('/inscription', 'REGISTER');
-            }}
-            onNavigateAuth={(mode) => navigateTo(mode === 'LOGIN' ? '/connexion' : '/inscription', mode)}
+        {/* MIRE DE CONNEXION / INSCRIPTION UNIQUE DIRECTE (AUCUN SITE MARKETING) */}
+        {!user && (
+          <AuthView
+            country={country}
+            language={language}
+            initialMode={authInitialMode}
+            onNavigate={(mode) => navigateTo(mode === 'LOGIN' ? '/connexion' : '/inscription', mode)}
+            onSuccess={handleAuthSuccess}
           />
-        ) : (
-          /* APPLICATION WEB COMPLÈTE */
-          <>
-            {!user && (
-              <AuthView
-                country={country}
-                language={language}
-                initialMode={authInitialMode}
-                onNavigate={(mode) => navigateTo(mode === 'LOGIN' ? '/connexion' : '/inscription', mode)}
-                onSuccess={(data) => {
-                  handleAuthSuccess(data);
-                  setViewMode('APP');
-                  if (typeof window !== 'undefined') {
-                    window.history.pushState({}, '', '/app');
-                  }
-                }}
-              />
-            )}
+        )}
 
-            {user && user.role === 'PENDING' && (
-              <RoleSelectionModal
-                user={user}
-                token={token}
-                onRoleChosen={handleRoleChosen}
-              />
-            )}
+        {/* ESPACES CONNECTÉS PRIVÉS BASÉS STRICTEMENT SUR LE RÔLE */}
+        {user && user.role === 'PENDING' && (
+          <RoleSelectionModal
+            user={user}
+            token={token}
+            onRoleChosen={handleRoleChosen}
+          />
+        )}
 
-            {user && user.role === 'PROVIDER' && (
-              <ProviderDashboard
-                user={user}
-                token={token}
-                posts={posts}
-                serviceRequests={serviceRequests}
-                onAddPost={handleAddPost}
-                onUpdateRequestStatus={handleUpdateRequestStatus}
-                onUpdateProviderProfile={handleUpdateProviderProfile}
-                onLogout={handleLogout}
-              />
-            )}
+        {user && user.role === 'PROVIDER' && (
+          <ProviderDashboard
+            user={user}
+            token={token}
+            posts={posts}
+            serviceRequests={serviceRequests}
+            onAddPost={handleAddPost}
+            onUpdateRequestStatus={handleUpdateRequestStatus}
+            onUpdateProviderProfile={handleUpdateProviderProfile}
+            onLogout={handleLogout}
+            activeSectionOverride={activeDrawerSection}
+          />
+        )}
 
-            {user && user.role === 'CLIENT' && (
-              <ClientView
-                user={user}
-                token={token}
-                country={country}
-                posts={posts}
-                providers={providers}
-                serviceRequests={serviceRequests}
-                onAddPost={handleAddPost}
-                onUpdateUser={handleUpdateUser}
-                onAddServiceRequest={handleAddServiceRequest}
-                onSubmitReview={handleSubmitReview}
-                onLogout={handleLogout}
-              />
-            )}
+        {user && user.role === 'CLIENT' && (
+          <ClientView
+            user={user}
+            token={token}
+            country={country}
+            posts={posts}
+            providers={providers}
+            serviceRequests={serviceRequests}
+            onAddPost={handleAddPost}
+            onUpdateUser={handleUpdateUser}
+            onAddServiceRequest={handleAddServiceRequest}
+            onSubmitReview={handleSubmitReview}
+            onLogout={handleLogout}
+            activeSectionOverride={activeDrawerSection}
+          />
+        )}
 
-            {user && (user.role === 'ADMIN' || user.role === 'DEVELOPER' || user.role === 'developer') && (
-              <AdminDashboard token={token} onLogout={handleLogout} />
-            )}
-          </>
+        {user && (user.role === 'ADMIN' || user.role === 'DEVELOPER' || user.role === 'developer') && (
+          <AdminDashboard
+            token={token}
+            onLogout={handleLogout}
+            activeTabOverride={activeDrawerSection as any}
+          />
         )}
       </main>
 
-      {/* FOOTER AVEC ACCÈS DÉVELOPPEUR */}
-      <footer className="bg-white border-t border-slate-200 py-4 px-4 text-xs text-slate-500">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="font-semibold text-center sm:text-left">
-            SERVICE RAPIDE © 2026 • Plateforme Panafricaine de Services de Confiance
+      {/* PIED DE PAGE STRICTEMENT PROFESSIONNEL (AUCUN LIEN DÉVELOPPEUR PUBLIC NI MARKETING) */}
+      <footer className="bg-white border-t border-slate-200 py-3.5 px-4 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+          <p className="font-semibold text-[11px] text-slate-500">
+            SERVICE RAPIDE © 2026 • Système Panafricain Sécurisé de Services et Petits Travaux
           </p>
-          <div className="flex items-center gap-4 text-[11px] text-slate-500">
-            <button
-              onClick={() => navigateTo('/connexion', 'LOGIN')}
-              className="hover:text-brand-600 transition underline underline-offset-2 font-medium"
-            >
-              Espace Développeur
-            </button>
-          </div>
+          <p className="text-[10px] text-slate-400">
+            Plateforme réservée aux utilisateurs enregistrés et professionnels agréés.
+          </p>
         </div>
       </footer>
     </div>
   );
 }
+
 export default App;

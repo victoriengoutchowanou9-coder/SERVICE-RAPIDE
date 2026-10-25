@@ -301,133 +301,8 @@ export const ClientView: React.FC<ClientViewProps> = ({
   const availableNowCount = currentProviders.filter((p) => p.availability === 'AVAILABLE').length;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      <div className="flex flex-col lg:flex-row items-start gap-6">
-        {/* COLONNE GAUCHE VERTICALE : TOUS LES BOUTONS ALIGNÉS À GAUCHE */}
-        <aside className="w-full lg:w-72 shrink-0 space-y-3">
-          {/* Identité Client */}
-          <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-xs flex items-center gap-3">
-            <div className="relative shrink-0">
-              <img
-                src={
-                  user?.avatarUrl ||
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
-                }
-                alt="Profil Client"
-                className="w-12 h-12 rounded-2xl object-cover ring-2 ring-brand-500/30"
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-black text-slate-900 truncate">
-                {user?.firstName || 'Client'} {user?.lastName || ''}
-              </h3>
-              <p className="text-[11px] text-slate-500 font-semibold truncate">
-                {isSubActive
-                  ? '⭐ Abonnement Actif'
-                  : isTrialActive
-                  ? `🎁 Essai (${daysLeftTrial}j restant)`
-                  : '🔒 Essai Expiré'}
-              </p>
-            </div>
-          </div>
-
-          {/* GROUPE DE BOUTONS VERTICAUX */}
-          <div className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-xs flex flex-col gap-1.5">
-            {/* 1. Bouton Profil */}
-            <button
-              type="button"
-              onClick={() => setShowProfileModal(true)}
-              className="w-full inline-flex items-center gap-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-3 rounded-2xl text-xs shadow-xs transition"
-            >
-              <User className="w-4 h-4 text-emerald-400" />
-              <span>Mon Profil & Abonnement</span>
-            </button>
-
-            {/* 2. Onglet Prestataires */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('PROVIDERS')}
-              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center justify-between text-xs font-bold ${
-                activeTab === 'PROVIDERS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Briefcase className="w-4 h-4 text-brand-600" />
-                <span>Prestataires</span>
-              </div>
-              <span className="text-[10px] font-black bg-white px-2 py-0.5 rounded-full border border-slate-200">
-                {availableNowCount}
-              </span>
-            </button>
-
-            {/* 3. Onglet Mes Réservations */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('REQUESTS')}
-              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center justify-between text-xs font-bold ${
-                activeTab === 'REQUESTS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Clock className="w-4 h-4 text-amber-600" />
-                <span>Mes Réservations</span>
-              </div>
-              <span className="text-[10px] font-black bg-white px-2 py-0.5 rounded-full border border-slate-200">
-                {clientRequests.length}
-              </span>
-            </button>
-
-            {/* 4. Onglet Fil d'Actualité */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('FEED')}
-              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center gap-2.5 text-xs font-bold ${
-                activeTab === 'FEED' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              <Rss className="w-4 h-4 text-blue-600" />
-              <span>Fil d'Actualité</span>
-            </button>
-
-            {/* 5. Onglet Publicités */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('ADS')}
-              className={`w-full py-2.5 px-3.5 rounded-2xl transition flex items-center gap-2.5 text-xs font-bold ${
-                activeTab === 'ADS' ? 'bg-brand-50 text-brand-700 font-black' : 'text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              <Megaphone className="w-4 h-4 text-amber-500" />
-              <span>Faire une Publicité</span>
-            </button>
-
-            {/* 6. Bouton Support 24/7 */}
-            <button
-              type="button"
-              onClick={() => setShowSupportModal(true)}
-              className="w-full inline-flex items-center gap-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold px-3.5 py-2.5 rounded-2xl text-xs transition border border-slate-100"
-            >
-              <LifeBuoy className="w-4 h-4 text-brand-600" />
-              <span>Support Client 24/7</span>
-            </button>
-
-            {/* 7. Bouton Déconnexion (aligné au vertical à gauche) */}
-            {onLogout && (
-              <button
-                type="button"
-                onClick={onLogout}
-                className="w-full inline-flex items-center gap-2.5 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 font-bold px-3.5 py-2.5 rounded-2xl text-xs transition border border-rose-200 shadow-2xs mt-2"
-              >
-                <LogOut className="w-4 h-4 text-rose-600" />
-                <span>Se déconnecter</span>
-              </button>
-            )}
-          </div>
-        </aside>
-
-        {/* COLONNE DROITE : CONTENU PRINCIPAL */}
-        <div className="flex-1 w-full min-w-0 space-y-5">
-          {/* BANNIÈRE D'ÉTAT DE L'ABONNEMENT ET DE L'ESSAI GRATUIT (7 JOURS) */}
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
+      {/* BANNIÈRE D'ÉTAT DE L'ABONNEMENT ET DE L'ESSAI GRATUIT (7 JOURS) */}
           <div
             className={`rounded-3xl p-4 sm:p-5 border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs ${
               hasAccess
@@ -987,8 +862,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
           <AdsSection />
         </div>
       )}
-        </div>
-      </div>
 
       {/* Modal Support 24/7 */}
       {showSupportModal && <SupportModal onClose={() => setShowSupportModal(false)} />}

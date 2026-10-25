@@ -325,8 +325,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-      {/* En-tête supervision sécurisée */}
-      <div className="bg-slate-900 rounded-3xl p-5 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* En-tête supervision sécurisée (titre et statut) */}
+      <div className="bg-slate-900 rounded-3xl p-5 text-white shadow-md flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
             <ShieldAlert className="w-6 h-6" />
@@ -338,24 +338,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </span>
             </div>
             <h2 className="text-lg font-black tracking-tight mt-0.5">
-              Supervision Centrale & Administration Système
+              {activeTab === 'USERS' && 'Gestion des Utilisateurs'}
+              {activeTab === 'ACTIVITIES' && 'Journal d\'Audit & Activités'}
+              {activeTab === 'ERRORS' && 'Suivi des Erreurs & Incidents Techniques'}
+              {activeTab === 'SUBSCRIPTIONS' && 'Gestion des Abonnements & Essais Gratuits'}
+              {activeTab === 'ADS' && 'Gestion & Tarification des Publicités'}
+              {activeTab === 'METRICS' && 'Supervision & Flux Financiers'}
             </h2>
             <p className="text-xs text-slate-400">
-              Contrôle des utilisateurs, audit des activités, suivi des erreurs et validation des flux SasPay.
+              {activeTab === 'USERS' && 'Contrôle des comptes inscrits, blocage, déblocage et modération.'}
+              {activeTab === 'ACTIVITIES' && 'Traçabilité des opérations de la plateforme sans données sensibles.'}
+              {activeTab === 'ERRORS' && 'Surveillance des incidents techniques et échecs de paiements.'}
+              {activeTab === 'SUBSCRIPTIONS' && 'Suivi des périodes gratuites et abonnements payés via SasPay.'}
+              {activeTab === 'ADS' && 'Supervision des campagnes publicitaires à 1 000 FCFA / semaine.'}
+              {activeTab === 'METRICS' && 'Indicateurs de conversion et volume financier global.'}
             </p>
           </div>
         </div>
-
-        {onLogout && (
-          <button
-            type="button"
-            onClick={onLogout}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-rose-600/90 hover:bg-rose-700 text-white font-bold px-4 py-2.5 rounded-2xl text-xs transition border border-rose-500/30"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Déconnexion sécurisée</span>
-          </button>
-        )}
       </div>
 
       {feedback && (
@@ -364,75 +363,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <span>{feedback}</span>
         </div>
       )}
-
-      {/* Onglets de navigation administrative */}
-      <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-1 overflow-x-auto text-xs font-bold shadow-2xs">
-        <button
-          type="button"
-          onClick={() => setActiveTab('USERS')}
-          className={`flex-1 py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeTab === 'USERS' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Users className="w-4 h-4 text-brand-600" />
-          <span>Utilisateurs ({totalUsers})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('ACTIVITIES')}
-          className={`flex-1 py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeTab === 'ACTIVITIES' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Activity className="w-4 h-4 text-emerald-600" />
-          <span>Journal d'Activités</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('ERRORS')}
-          className={`flex-1 py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeTab === 'ERRORS' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Bug className="w-4 h-4 text-rose-600" />
-          <span>Erreurs & Incidents ({errorsLog.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('SUBSCRIPTIONS')}
-          className={`flex-1 py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeTab === 'SUBSCRIPTIONS' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <CreditCard className="w-4 h-4 text-amber-600" />
-          <span>Gestion Abonnements</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('ADS')}
-          className={`flex-1 py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeTab === 'ADS' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Megaphone className="w-4 h-4 text-purple-600" />
-          <span>Publicités (1 000 FCFA/sem)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('METRICS')}
-          className={`flex-1 py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
-            activeTab === 'METRICS' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Briefcase className="w-4 h-4 text-blue-600" />
-          <span>Métriques & Flux</span>
-        </button>
-      </div>
 
       {/* SECTION A : GESTION DES UTILISATEURS */}
       {activeTab === 'USERS' && (

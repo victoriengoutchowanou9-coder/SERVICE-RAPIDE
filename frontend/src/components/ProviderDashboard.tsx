@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Power,
   MapPin,
@@ -23,6 +23,8 @@ import {
   CheckCircle2,
   Tag,
   ShieldAlert,
+  Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import { FeedPosts } from './FeedPosts';
 import { AdsSection } from './AdsSection';
@@ -75,16 +77,33 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
     }
   );
 
-  const [activeSubTab, setActiveSubTab] = useState<'MISSIONS' | 'PROFILE' | 'FEED' | 'ADS'>('MISSIONS');
+  const [activeSubTab, setActiveSubTab] = useState<'MISSIONS' | 'PROFILE' | 'BILLING' | 'FEED' | 'ADS'>('MISSIONS');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [showSubModal, setShowSubModal] = useState(false);
   const [momoNumber, setMomoNumber] = useState('');
   const [momoOperator, setMomoOperator] = useState('ORANGE_MONEY');
+  const [payments, setPayments] = useState<any[]>([]);
 
   // Nouveaux tags de compétences et zones
   const [newSkillInput, setNewSkillInput] = useState('');
   const [newZoneInput, setNewZoneInput] = useState('');
+
+  // Récupérer l'historique réel des paiements
+  useEffect(() => {
+    if (user?.id) {
+      supabaseBackend.getPaymentHistory(user.id).then((history) => {
+        setPayments(history);
+      });
+    }
+  }, [user?.id]);
+
+  // Calcul du statut de l'abonnement
+  const isAvailable = profile.availability === 'AVAILABLE';
+  const expiresDate = new Date(profile.subscriptionExpiresAt);
+  const isSubActive = expiresDate > new Date();
+  const daysLeftSub = Math.max(0, Math.ceil((expiresDate.getTime() - Date.now()) / (1000 * 3600 * 24)));
+  const isExpiringSoon = isSubActive && daysLeftSub <= 5;
 
   // Demandes de missions internes ou externes
   const [internalRequests, setInternalRequests] = useState<ServiceRequest[]>([
@@ -136,12 +155,15 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   );
   const pendingMissionsCount = providerMissions.filter((r) => r.status === 'PENDING').length;
 
-  const isAvailable = profile.availability === 'AVAILABLE';
-  const expiresDate = new Date(profile.subscriptionExpiresAt);
-  const isSubActive = expiresDate > new Date();
-
-  // Basculer la disponibilité en 1 clic
+  // Basculer la disponibilité en 1 clic (bloqué si abonnement expiré)
   const toggleAvailability = async () => {
+    if (!isSubActive) {
+      setShowSubModal(true);
+      setSuccessMsg("⚠️ Abonnement mensuel requis (5 000 FCFA) : Veuillez activer votre abonnement pour redevenir Disponible.");
+      setTimeout(() => setSuccessMsg(null), 5000);
+      return;
+    }
+
     const newStatus = isAvailable ? 'BUSY' : 'AVAILABLE';
     const updated = { ...profile, availability: newStatus };
     setProfile(updated);
@@ -268,49 +290,88 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-      {/* Bannière de Statut Abonnement */}
+      {/* 1. NOTIFICATION AVANT EXPIRATION (SI MOINS DE 7 JOURS RESTANTS) */}
+      {isExpiringSoon && (
+        <div className="p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-wider text-amber-800">
+                Alerte avant expiration
+              </p>
+              <p className="text-xs sm:text-sm font-bold text-amber-950 mt-0.5">
+                Votre période d'essai gratuit de 30 jours se termine dans {daysLeftSub} jour(s) (le {expiresDate.toLocaleDateString()}).
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowSubModal(true)}
+            className="w-full sm:w-auto inline-flex items-center justify-center min-h-[40px] px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black shadow-xs transition"
+          >
+            Renouveler dès maintenant
+          </button>
+        </div>
+      )}
+
+      {/* 2. BANNIÈRE DE STATUT ABONNEMENT ET FACTURATION */}
       <div
         className={`rounded-3xl p-5 border shadow-xs transition ${
           isSubActive
             ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-white border-emerald-200'
-            : 'bg-red-50 border-red-200'
+            : 'bg-gradient-to-r from-rose-50 via-rose-50/70 to-white border-rose-200'
         }`}
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div
               className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                isSubActive ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                isSubActive ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
               }`}
             >
               <CreditCard className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Statut Abonnement Prestataire
                 </span>
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    isSubActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                  className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                    isSubActive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                   }`}
                 >
-                  {isSubActive ? 'Actif & Profil Visible' : 'Expiré (Profil Masqué)'}
+                  {isSubActive ? `Actif (${daysLeftSub} jours)` : 'Expiré (Profil Masqué)'}
                 </span>
               </div>
-              <p className="text-sm font-bold text-slate-900 mt-0.5">
+              <p className="text-sm font-black text-slate-900 mt-0.5">
                 {isSubActive
-                  ? `Valide jusqu'au ${expiresDate.toLocaleDateString()}`
-                  : 'Sans abonnement actif (5000 FCFA), votre profil n’est pas visible aux clients'}
+                  ? `Valide jusqu'au ${expiresDate.toLocaleDateString()} • Visibilité maximale auprès des clients`
+                  : 'Période gratuite de 30 jours terminée (5 000 FCFA/mois requis)'}
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowSubModal(true)}
-            className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-xs"
-          >
-            Renouveler (5 000 FCFA Mobile Money)
-          </button>
+
+          {/* Boutons d'action regroupés et parfaitement alignés */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('BILLING')}
+              className="inline-flex items-center justify-center min-h-[42px] px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition"
+            >
+              Historique des paiements
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowSubModal(true)}
+              className="inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-xs transition gap-1.5"
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>{isSubActive ? 'Renouveler (5 000 FCFA)' : 'S’abonner (5 000 FCFA / mois)'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -326,17 +387,25 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
         <div className="flex items-center gap-3">
           <div
             className={`w-4 h-4 rounded-full ring-4 transition ${
-              isAvailable
+              !isSubActive
+                ? 'bg-slate-400 ring-slate-100'
+                : isAvailable
                 ? 'bg-emerald-500 ring-emerald-100 animate-pulse'
                 : 'bg-rose-500 ring-rose-100'
             }`}
           />
           <div>
             <p className="text-sm font-black text-slate-900">
-              {isAvailable ? '🟢 Vous êtes Disponible MAINTENANT' : '🔴 Actuellement Occupé'}
+              {!isSubActive
+                ? '⚠️ Statut Suspendu (Abonnement expiré)'
+                : isAvailable
+                ? '🟢 Vous êtes Disponible MAINTENANT'
+                : '🔴 Actuellement Occupé'}
             </p>
             <p className="text-xs text-slate-500">
-              {isAvailable
+              {!isSubActive
+                ? 'Renouvelez votre abonnement mensuel (5 000 FCFA) pour réactiver votre disponibilité et recevoir les demandes.'
+                : isAvailable
                 ? 'Les clients vous voient en tête de liste et peuvent réserver immédiatement ou programmer un créneau.'
                 : 'Votre profil apparaît comme "Occupé" : les réservations immédiates sont suspendues.'}
             </p>
@@ -344,21 +413,31 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
         </div>
 
         <button
+          type="button"
           onClick={toggleAvailability}
-          className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition shrink-0 ${
-            isAvailable
+          className={`inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl font-bold text-xs transition shrink-0 gap-2 ${
+            !isSubActive
+              ? 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200'
+              : isAvailable
               ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
               : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
           }`}
         >
           <Power className="w-4 h-4" />
-          <span>{isAvailable ? 'Passer en Occupé' : 'Passer en Disponible'}</span>
+          <span>
+            {!isSubActive
+              ? 'Activer mon statut'
+              : isAvailable
+              ? 'Passer en Occupé'
+              : 'Passer en Disponible'}
+          </span>
         </button>
       </div>
 
       {/* Barre d'onglets pour le Prestataire */}
       <div className="flex bg-slate-100 p-1.5 rounded-2xl text-xs font-bold gap-1 overflow-x-auto">
         <button
+          type="button"
           onClick={() => setActiveSubTab('MISSIONS')}
           className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
             activeSubTab === 'MISSIONS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
@@ -366,11 +445,12 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
         >
           <Briefcase className="w-3.5 h-3.5 text-brand-600" />
           <span>
-            Demandes Reçues {pendingMissionsCount > 0 && `(${pendingMissionsCount} nouvelles)`}
+            Demandes Reçues {pendingMissionsCount > 0 && `(${pendingMissionsCount})`}
           </span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveSubTab('PROFILE')}
           className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
             activeSubTab === 'PROFILE' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
@@ -381,6 +461,18 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
         </button>
 
         <button
+          type="button"
+          onClick={() => setActiveSubTab('BILLING')}
+          className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
+            activeSubTab === 'BILLING' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+          }`}
+        >
+          <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Abonnement & Facturation</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveSubTab('FEED')}
           className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
             activeSubTab === 'FEED' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
@@ -391,6 +483,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveSubTab('ADS')}
           className={`flex-1 py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
             activeSubTab === 'ADS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
@@ -532,48 +625,58 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                       </div>
 
                       {/* Téléphone & Contact Client */}
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                           <Phone className="w-3.5 h-3.5 text-slate-400" />
                           <span>Client : {req.clientPhone}</span>
                         </span>
-                        <a
-                          href={`tel:${req.clientPhone}`}
-                          className="text-[11px] bg-slate-100 hover:bg-slate-200 font-bold px-2 py-0.5 rounded-lg text-slate-800"
-                        >
-                          Appeler
-                        </a>
-                        <a
-                          href={`https://wa.me/${req.clientPhone.replace(/[^0-9]/g, '')}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1"
-                        >
-                          <MessageCircle className="w-3 h-3 text-emerald-600" />
-                          <span>WhatsApp</span>
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={`tel:${req.clientPhone}`}
+                            className="inline-flex items-center justify-center min-h-[38px] px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 font-bold rounded-xl text-xs text-slate-800 transition"
+                          >
+                            <Phone className="w-3.5 h-3.5 mr-1" />
+                            <span>Appeler</span>
+                          </a>
+                          <a
+                            href={`https://wa.me/${req.clientPhone.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center min-h-[38px] px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold rounded-xl border border-emerald-200 transition text-xs"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                            <span>WhatsApp</span>
+                          </a>
+                        </div>
                       </div>
                     </div>
 
-                    {/* BOUTONS D'ACTION : ACCEPTER / REFUSER / TERMINER */}
-                    <div className="pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap">
+                    {/* BOUTONS D'ACTION : ACCEPTER / REFUSER / TERMINER - PARFAITEMENT ALIGNÉS */}
+                    <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-2.5">
                       {isPending && (
                         <>
                           <button
                             type="button"
-                            onClick={() => handleUpdateMissionStatus(req.id, 'ACCEPTED')}
-                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
+                            onClick={() => handleUpdateMissionStatus(req.id, 'REJECTED')}
+                            className="inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition order-2 sm:order-1"
                           >
-                            <CheckCircle2 className="w-4 h-4" />
-                            <span>Accepter la mission</span>
+                            <XCircle className="w-4 h-4 mr-1.5" />
+                            <span>Refuser</span>
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleUpdateMissionStatus(req.id, 'REJECTED')}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+                            onClick={() => {
+                              if (!isSubActive) {
+                                setShowSubModal(true);
+                                alert("Votre abonnement a expiré. Activez votre abonnement pour accepter de nouvelles missions.");
+                                return;
+                              }
+                              handleUpdateMissionStatus(req.id, 'ACCEPTED');
+                            }}
+                            className="inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition order-1 sm:order-2"
                           >
-                            <XCircle className="w-4 h-4" />
-                            <span>Refuser</span>
+                            <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                            <span>Accepter la mission</span>
                           </button>
                         </>
                       )}
@@ -582,15 +685,15 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                         <button
                           type="button"
                           onClick={() => handleUpdateMissionStatus(req.id, 'COMPLETED')}
-                          className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
+                          className="w-full sm:w-auto inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition"
                         >
-                          <CheckCircle className="w-4 h-4 text-emerald-400" />
+                          <CheckCircle className="w-4 h-4 text-emerald-400 mr-1.5" />
                           <span>Marquer comme mission terminée</span>
                         </button>
                       )}
 
                       {isCompleted && (
-                        <div className="w-full text-center text-xs font-bold text-emerald-800 bg-emerald-50 py-2 rounded-xl border border-emerald-200">
+                        <div className="w-full text-center text-xs font-bold text-emerald-800 bg-emerald-50 py-2.5 rounded-xl border border-emerald-200">
                           ✓ Mission complétée avec succès !
                         </div>
                       )}
@@ -1000,12 +1103,169 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-brand-600 hover:bg-brand-700 text-white font-black py-3 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm"
+            className="w-full sm:w-auto inline-flex items-center justify-center min-h-[44px] bg-brand-600 hover:bg-brand-700 text-white font-black py-3 px-6 rounded-xl text-xs sm:text-sm transition gap-2 shadow-xs ml-auto"
           >
             <Save className="w-4 h-4" />
             <span>{loading ? 'Enregistrement...' : 'Enregistrer mon profil, mes tarifs et mes zones'}</span>
           </button>
         </form>
+      )}
+
+      {/* ONGLET 3 : ABONNEMENT & FACTURATION (RÈGLE MÉTIER PRESTATAIRE 30 JOURS) */}
+      {activeSubTab === 'BILLING' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Carte de Statut Détaillée */}
+          <div
+            className={`p-6 rounded-3xl border ${
+              isSubActive
+                ? 'bg-gradient-to-br from-emerald-50 via-white to-white border-emerald-200'
+                : 'bg-gradient-to-br from-rose-50 via-white to-white border-rose-200'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                    isSubActive ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                  }`}
+                >
+                  <CreditCard className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-slate-900">
+                      {isSubActive ? 'Abonnement Prestataire Actif' : 'Abonnement Prestataire Expiré'}
+                    </h3>
+                    <span
+                      className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                        isSubActive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                      }`}
+                    >
+                      {isSubActive ? 'Visibilité Active' : 'Profil Masqué'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Forfait mensuel sans commission • 5 000 FCFA / 30 jours
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowSubModal(true)}
+                className="w-full sm:w-auto inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition gap-2"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>{isSubActive ? 'Prolonger de 30 jours' : 'S’abonner (5 000 FCFA)'}</span>
+              </button>
+            </div>
+
+            {/* Grille des dates */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+              <div className="p-3 bg-white rounded-2xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Création du compte :</span>
+                <span className="font-bold text-slate-800">
+                  {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Actif'}
+                </span>
+              </div>
+              <div className="p-3 bg-white rounded-2xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Date d'expiration :</span>
+                <span className="font-black text-slate-900">
+                  {expiresDate.toLocaleDateString()}
+                </span>
+              </div>
+              <div className={`p-3 rounded-2xl border ${isSubActive ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-rose-50 border-rose-200 text-rose-950'}`}>
+                <span className="text-[10px] font-bold block uppercase opacity-80">Jours restants :</span>
+                <span className="font-black text-sm">
+                  {isSubActive ? `${daysLeftSub} jour(s)` : '0 jour (Expiré)'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Avantages Inclus */}
+          <div className="p-5 bg-white rounded-3xl border border-slate-200 space-y-3">
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-brand-600" />
+              <span>Avantages garantis pour les prestataires actifs</span>
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-600">
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-2">
+                <span className="text-emerald-600 font-black">✓</span>
+                <div>
+                  <strong className="text-slate-900 block">En tête des résultats</strong>
+                  <span>Apparaissez en priorité aux clients qui recherchent vos compétences.</span>
+                </div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-2">
+                <span className="text-emerald-600 font-black">✓</span>
+                <div>
+                  <strong className="text-slate-900 block">Missions Immédiates</strong>
+                  <span>Recevez les demandes urgentes « Maintenant » avec notification en direct.</span>
+                </div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-2">
+                <span className="text-emerald-600 font-black">✓</span>
+                <div>
+                  <strong className="text-slate-900 block">Liaison Téléphone & WhatsApp</strong>
+                  <span>Les clients certifiés peuvent vous appeler et vous écrire directement.</span>
+                </div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-2">
+                <span className="text-emerald-600 font-black">✓</span>
+                <div>
+                  <strong className="text-slate-900 block">0% de commission</strong>
+                  <span>Vous conservez 100% du montant convenu avec vos clients.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Historique réel des paiements */}
+          <div className="bg-white rounded-3xl p-5 border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-slate-500" />
+                <span>Historique de mes transactions et renouvellements</span>
+              </h4>
+              <span className="text-xs text-slate-400 font-medium">{payments.length} paiement(s)</span>
+            </div>
+
+            {payments.length === 0 ? (
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center text-xs text-slate-500">
+                Aucun historique de paiement pour l'instant. Votre période initiale de 30 jours est active.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {payments.map((p) => (
+                  <div
+                    key={p.id}
+                    className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs"
+                  >
+                    <div>
+                      <p className="font-bold text-slate-900">
+                        {p.type === 'PROVIDER_SUBSCRIPTION'
+                          ? 'Abonnement Mensuel Prestataire (30 jours)'
+                          : 'Paiement Service'}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {new Date(p.createdAt).toLocaleDateString()} • Réf : {p.transactionReference || 'SasPay Mobile Money'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-black text-emerald-800 text-sm">
+                        {Number(p.amount).toLocaleString()} {p.currency || 'FCFA'}
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        ✓ Validé
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ONGLET 4 : FIL D'ACTUALITÉ & CLIENTS CONNECTÉS */}
@@ -1033,58 +1293,103 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
         </div>
       )}
 
-      {/* MODAL PAIEMENT ABONNEMENT */}
+      {/* MODAL PAIEMENT ABONNEMENT PRESTATAIRE */}
       {showSubModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
-            <h4 className="text-base font-black text-slate-900 mb-1">Abonnement Prestataire</h4>
-            <p className="text-xs text-slate-500 mb-4">
-              Tarif : <strong>5 000 FCFA</strong> pour 30 jours de visibilité garantie.
-            </p>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-auto animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base font-black text-slate-900">Abonnement Prestataire Pro</h4>
+                  <p className="text-xs text-slate-500">30 jours de visibilité garantie et missions en direct</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSubModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Tarif & Avantages */}
+            <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200 mb-4 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Tarif Forfaitaire</span>
+                <span className="text-base font-black text-emerald-950">5 000 FCFA / 30 jours</span>
+              </div>
+              <p className="text-xs text-emerald-800 leading-relaxed">
+                Abonnement sans engagement de durée et sans aucune commission sur le montant de vos prestations.
+              </p>
+            </div>
+
+            <div className="space-y-2 mb-4">
+              <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Avantages de votre statut Pro :</p>
+              <ul className="text-xs text-slate-600 space-y-1.5">
+                <li className="flex items-center gap-1.5">
+                  <span className="text-emerald-600 font-black">✓</span> Affichage en tête de liste auprès des clients de votre ville
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-emerald-600 font-black">✓</span> Alertes immédiates pour les interventions d'urgence « Maintenant »
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-emerald-600 font-black">✓</span> Appels directs et messages WhatsApp de clients qualifiés
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-emerald-600 font-black">✓</span> Zéro commission prélevée sur vos factures
+                </li>
+              </ul>
+            </div>
 
             <div className="space-y-3 mb-5">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Opérateur Mobile Money
+                  Moyen de Paiement Mobile Money
                 </label>
                 <select
                   value={momoOperator}
                   onChange={(e) => setMomoOperator(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
+                  className="w-full min-h-[42px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
                 >
-                  <option value="MTN_MOMO">MTN Mobile Money</option>
-                  <option value="ORANGE_MONEY">Orange Money</option>
-                  <option value="MOOV_MONEY">Moov Money</option>
-                  <option value="WAVE">Wave</option>
+                  <option value="ORANGE_MONEY">Orange Money (Côte d'Ivoire, Sénégal, etc.)</option>
+                  <option value="MTN_MOMO">MTN Mobile Money (Bénin, Côte d'Ivoire, etc.)</option>
+                  <option value="MOOV_MONEY">Moov Money (Bénin, Côte d'Ivoire, etc.)</option>
+                  <option value="WAVE">Wave (Côte d'Ivoire, Sénégal)</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Numéro Mobile Money
+                  Numéro Mobile Money (Optionnel pour le paiement)
                 </label>
                 <input
                   type="tel"
                   placeholder="Ex: 0700000000"
                   value={momoNumber}
                   onChange={(e) => setMomoNumber(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-brand-500"
+                  className="w-full min-h-[42px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 pt-2 border-t border-slate-100">
               <button
+                type="button"
                 onClick={() => setShowSubModal(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs"
+                className="inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex-1"
               >
                 Annuler
               </button>
               <button
+                type="button"
                 onClick={handlePaySubscription}
-                className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-sm"
+                className="inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition flex-1"
               >
-                Payer 5 000 FCFA
+                Valider & Payer (5 000 FCFA)
               </button>
             </div>
           </div>

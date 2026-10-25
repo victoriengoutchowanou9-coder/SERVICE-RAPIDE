@@ -31,6 +31,7 @@ import { FeedPosts } from './FeedPosts';
 import { ClientProfileModal } from './ClientProfileModal';
 import { SupportModal } from './SupportModal';
 import { saspayClient } from '../config/saspay';
+import { supabaseBackend } from '../config/supabase';
 
 interface ClientViewProps {
   user: any;
@@ -75,8 +76,18 @@ export const ClientView: React.FC<ClientViewProps> = ({
   const [filterAvailableNowOnly, setFilterAvailableNowOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'DEFAULT' | 'PRICE_ASC' | 'RATING_DESC' | 'MISSIONS_DESC'>('DEFAULT');
 
-  const trialExpires = user.clientTrialExpiresAt ? new Date(user.clientTrialExpiresAt) : null;
-  const isTrialActive = trialExpires && trialExpires > new Date();
+  // Gestion rigoureuse de la semaine d'essai (7 jours) et de l'abonnement client
+  const trialExpires = user?.clientTrialExpiresAt ? new Date(user.clientTrialExpiresAt) : null;
+  const isTrialActive = trialExpires ? trialExpires > new Date() : false;
+
+  const subExpires = user?.clientSubscriptionExpiresAt ? new Date(user.clientSubscriptionExpiresAt) : null;
+  const isSubActive = subExpires ? subExpires > new Date() : false;
+
+  const hasAccess = isTrialActive || isSubActive;
+  const daysLeftTrial = trialExpires ? Math.max(0, Math.ceil((trialExpires.getTime() - Date.now()) / (1000 * 3600 * 24))) : 0;
+
+  // Contacts débloqués persistés
+  const [unlockedProviderIds, setUnlockedProviderIds] = useState<string[]>([]);
 
   // Liste des prestataires enregistrés
   const defaultMockProviders: ProviderItem[] = [];
@@ -85,6 +96,16 @@ export const ClientView: React.FC<ClientViewProps> = ({
   const currentProviders = externalProviders || internalProviders;
 
   const [internalRequests, setInternalRequests] = useState<ServiceRequest[]>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      supabaseBackend.getContactUnlocks(user.id).then((unlocks) => {
+        if (unlocks && unlocks.length > 0) {
+          setUnlockedProviderIds(unlocks.map((u: any) => u.providerId));
+        }
+      });
+    }
+  }, [user?.id]);
 
   const currentRequests = externalRequests || internalRequests;
   const clientRequests = currentRequests.filter(
@@ -168,8 +189,8 @@ export const ClientView: React.FC<ClientViewProps> = ({
       return;
     }
 
-    // Si la période d'essai n'est plus active, déclencher le paiement sécurisé SasPay
-    if (!isTrialActive) {
+    // Si ni la semaine d'essai ni l'abonnement ne sont actifs, paiement SasPay requis
+    if (!hasAccess) {
       try {
         const checkoutUrl = await saspayClient.createCheckoutSession({
           amount: 1000,
@@ -185,10 +206,12 @@ export const ClientView: React.FC<ClientViewProps> = ({
         window.location.href = checkoutUrl;
         return;
       } catch (err: any) {
-        console.error('Erreur initialisation SasPay :', err);
+        alert("Erreur SasPay : " + (err.message || 'Impossible de joindre le service de paiement'));
+        return;
       }
     }
 
+    setUnlockedProviderIds((prev) => [...prev, prov.id]);
     setInternalProviders((prev) =>
       prev.map((p) =>
         p.id === prov.id
@@ -197,9 +220,9 @@ export const ClientView: React.FC<ClientViewProps> = ({
               isContactUnlocked: true,
               unlockId: `unlock-${Date.now()}`,
               contact: {
-                directPhone: '+225 07 89 45 12 00',
-                whatsappNumber: '+2250789451200',
-                fullName: `${p.singleName} Kouamé`,
+                directPhone: p.contact?.directPhone || '+225 07 89 45 12 00',
+                whatsappNumber: p.contact?.whatsappNumber || '+2250789451200',
+                fullName: p.contact?.fullName || `${p.singleName} Kouamé`,
               },
             }
           : p
@@ -210,7 +233,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
     setActionMsg(
       isTrialActive
         ? '🎁 Contact débloqué GRATUITEMENT grâce à votre semaine offerte !'
-        : '💳 Contact débloqué avec succès par Mobile Money (1 000 FCFA).'
+        : '💳 Contact débloqué avec succès grâce à votre abonnement actif !'
     );
     setTimeout(() => setActionMsg(null), 4000);
   };
@@ -264,56 +287,132 @@ export const ClientView: React.FC<ClientViewProps> = ({
       {/* Profil Client & Actions Rapides */}
       <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <div className="relative shrink-0">
             <img
               src={
                 user?.avatarUrl ||
                 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
               }
               alt="Profil Client"
-              className="w-12 h-12 rounded-2xl object-cover ring-2 ring-brand-500/30"
+              className="w-14 h-14 rounded-2xl object-cover ring-2 ring-brand-500/30"
             />
           </div>
           <div>
-            <h3 className="text-sm font-black text-slate-900">
+            <h3 className="text-sm sm:text-base font-black text-slate-900">
               {user?.firstName || 'Client'} {user?.lastName || ''}
             </h3>
-            <p className="text-xs text-slate-500">
-              {isTrialActive ? (
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isSubActive ? (
                 <span className="text-emerald-700 font-bold">
-                  🎁 Semaine Gratuite Active jusqu'au {trialExpires?.toLocaleDateString()}
+                  ⭐ Abonnement Client Actif (jusqu'au {subExpires?.toLocaleDateString()})
+                </span>
+              ) : isTrialActive ? (
+                <span className="text-emerald-700 font-bold">
+                  🎁 Semaine d'essai gratuite : {daysLeftTrial} jour(s) restant(s)
                 </span>
               ) : (
-                'Compte Client Actif • Paiement Mobile Money sécurisé'
+                <span className="text-rose-600 font-bold">
+                  🔒 Période gratuite terminée • Abonnement requis
+                </span>
               )}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Boutons d'action regroupés du même côté et parfaitement alignés */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 w-full sm:w-auto">
           <button
+            type="button"
             onClick={() => setShowSupportModal(true)}
-            className="inline-flex items-center gap-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold px-3 py-2 rounded-xl text-xs transition border border-brand-200/80"
+            className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 font-bold px-3.5 py-2.5 min-h-[40px] rounded-xl text-xs transition border border-slate-200 shadow-2xs"
           >
-            <LifeBuoy className="w-3.5 h-3.5" />
+            <LifeBuoy className="w-4 h-4 text-brand-600" />
             <span>Support 24/7</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('ADS')}
-            className="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold px-3 py-2 rounded-xl text-xs transition border border-amber-200"
+            className="inline-flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold px-3.5 py-2.5 min-h-[40px] rounded-xl text-xs transition border border-amber-200"
           >
-            <Megaphone className="w-3.5 h-3.5 text-amber-600" />
+            <Megaphone className="w-4 h-4 text-amber-600" />
             <span>Faire une publicité</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setShowProfileModal(true)}
-            className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-3 py-2 rounded-xl text-xs transition"
+            className="inline-flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2.5 min-h-[40px] rounded-xl text-xs shadow-xs transition"
           >
-            <User className="w-3.5 h-3.5" />
-            <span>Mon Profil</span>
+            <User className="w-4 h-4" />
+            <span>Mon Profil & Abonnement</span>
           </button>
+        </div>
+      </div>
+
+      {/* BANNIÈRE D'ÉTAT DE L'ABONNEMENT ET DE L'ESSAI GRATUIT (RÈGLE MÉTIER CLIENT 7 JOURS) */}
+      <div
+        className={`rounded-3xl p-4 sm:p-5 border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs ${
+          hasAccess
+            ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-white border-emerald-200'
+            : 'bg-gradient-to-r from-rose-50 via-rose-50/70 to-white border-rose-200'
+        }`}
+      >
+        <div className="flex items-start sm:items-center gap-3">
+          <div
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+              hasAccess ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+            }`}
+          >
+            {hasAccess ? <Sparkles className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                Statut de mon accès client
+              </span>
+              <span
+                className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                  hasAccess ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                }`}
+              >
+                {isSubActive
+                  ? 'Abonnement Actif'
+                  : isTrialActive
+                  ? `Essai Gratuit (${daysLeftTrial}j)`
+                  : 'Essai Expiré'}
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm font-black text-slate-900 mt-0.5">
+              {isSubActive
+                ? `Abonnement client valable jusqu'au ${subExpires?.toLocaleDateString()} • Contacts illimités`
+                : isTrialActive
+                ? `Semaine offerte active jusqu'au ${trialExpires?.toLocaleDateString()} • Tous les contacts sont accessibles`
+                : 'Période gratuite de 7 jours terminée : veuillez souscrire pour continuer à voir les contacts.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Bouton d'action de la bannière abonnement */}
+        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
+          {!hasAccess ? (
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(true)}
+              className="inline-flex items-center justify-center gap-2 min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition w-full sm:w-auto"
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>S'abonner / Débloquer les contacts</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(true)}
+              className="inline-flex items-center justify-center gap-1.5 min-h-[38px] px-4 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition w-full sm:w-auto"
+            >
+              <span>Détails de mon pass</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -488,7 +587,10 @@ export const ClientView: React.FC<ClientViewProps> = ({
             ) : (
               filtered.map((item) => {
               const isBusy = item.availability === 'BUSY';
-              const isUnlocked = item.isContactUnlocked;
+              const isUnlocked = Boolean(
+                (item.isContactUnlocked || unlockedProviderIds.includes(item.id)) &&
+                (hasAccess || unlockedProviderIds.includes(item.id))
+              );
               const estimatedPrice = (item.basePrice || 5000) + (item.travelRequired ? item.travelFee || 0 : 0);
 
               return (
@@ -504,7 +606,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
                     {/* EN-TÊTE : Photo + Un seul nom + Disponibilité en direct */}
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="relative">
+                        <div className="relative shrink-0">
                           <img
                             src={
                               item.photoUrl ||
@@ -611,12 +713,12 @@ export const ClientView: React.FC<ClientViewProps> = ({
                     </div>
                   </div>
 
-                  {/* ZONE CONTACT (DÉBLOQUÉ / BLOQUÉ) */}
+                  {/* ZONE CONTACT (DÉBLOQUÉ / BLOQUÉ) - BOUTONS UNIFORMISÉS ET ALIGNÉS */}
                   <div className="pt-3 border-t border-slate-100 space-y-2">
                     {/* Zone de Contact Débloqué / Bloqué */}
                     {isUnlocked ? (
                       <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
-                        <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center justify-between mb-2">
                           <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider flex items-center gap-1">
                             <Unlock className="w-3 h-3" /> Contact Débloqué
                           </span>
@@ -626,44 +728,41 @@ export const ClientView: React.FC<ClientViewProps> = ({
                             </span>
                           ) : (
                             <button
+                              type="button"
                               onClick={() => setRefundModalItem(item)}
                               className="text-[10px] font-bold text-slate-500 hover:text-rose-600 underline"
                             >
-                              Signaler un problème
+                              Signaler un litige
                             </button>
                           )}
                         </div>
 
-                        <div className="flex flex-col gap-1.5">
-                          <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                            <span className="flex items-center gap-1.5">
-                              <Phone className="w-3.5 h-3.5 text-slate-500" />
-                              {item.contact.directPhone}
-                            </span>
-                            <a
-                              href={`tel:${item.contact.directPhone}`}
-                              className="text-[11px] bg-white border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-100"
-                            >
-                              Appeler
-                            </a>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                          <div className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span>{item.contact.directPhone}</span>
                           </div>
 
-                          {item.contact.whatsappNumber && (
-                            <div className="flex items-center justify-between text-xs font-bold text-emerald-800">
-                              <span className="flex items-center gap-1.5">
-                                <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                                {item.contact.whatsappNumber}
-                              </span>
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <a
+                              href={`tel:${item.contact.directPhone}`}
+                              className="inline-flex items-center justify-center min-h-[38px] px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition"
+                            >
+                              <Phone className="w-3.5 h-3.5 mr-1" />
+                              <span>Appeler</span>
+                            </a>
+                            {item.contact.whatsappNumber && (
                               <a
                                 href={`https://wa.me/${item.contact.whatsappNumber.replace(/[^0-9]/g, '')}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-[11px] bg-emerald-600 text-white font-bold px-2.5 py-1 rounded-lg hover:bg-emerald-700 flex items-center gap-1"
+                                className="inline-flex items-center justify-center min-h-[38px] px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition"
                               >
-                                WhatsApp Direct
+                                <MessageCircle className="w-3.5 h-3.5 mr-1" />
+                                <span>WhatsApp Direct</span>
                               </a>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -679,17 +778,41 @@ export const ClientView: React.FC<ClientViewProps> = ({
                             </span>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => setUnlockModalProvider(item)}
-                            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
-                          >
-                            <Lock className="w-3.5 h-3.5" />
-                            <span>
-                              {isTrialActive
-                                ? 'Débloquer le contact (Gratuit - Semaine d’essai)'
-                                : 'Débloquer le contact direct (1 000 FCFA Mobile Money)'}
-                            </span>
-                          </button>
+                          <div className="space-y-2">
+                            {!hasAccess && (
+                              <p className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
+                                <Lock className="w-3 h-3" />
+                                <span>Coordonnées masquées • Semaine gratuite terminée</span>
+                              </p>
+                            )}
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 w-full">
+                              {!hasAccess && (
+                                <button
+                                  type="button"
+                                  onClick={() => setShowProfileModal(true)}
+                                  className="inline-flex items-center justify-center min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                                >
+                                  <span>Voir les Pass</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setUnlockModalProvider(item)}
+                                className={`inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl text-xs font-black transition flex-1 sm:flex-initial shadow-xs gap-1.5 ${
+                                  hasAccess
+                                    ? 'bg-brand-600 hover:bg-brand-700 text-white'
+                                    : 'bg-slate-900 hover:bg-slate-800 text-white'
+                                }`}
+                              >
+                                <Lock className="w-3.5 h-3.5" />
+                                <span>
+                                  {hasAccess
+                                    ? 'Débloquer le contact (Gratuit - Essai actif)'
+                                    : 'Débloquer ce contact (1 000 FCFA)'}
+                                </span>
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}
@@ -842,63 +965,63 @@ export const ClientView: React.FC<ClientViewProps> = ({
 
       {/* Modal Déblocage Contact */}
       {unlockModalProvider && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-auto">
             <h4 className="text-base font-black text-slate-900 mb-1">Mise en Contact Sécurisée</h4>
             <p className="text-xs text-slate-500 mb-4">
               Prestataire : <strong>{unlockModalProvider.singleName}</strong> ({unlockModalProvider.serviceOffered})
             </p>
 
-            {isTrialActive ? (
-              <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-800 text-xs font-bold mb-4 flex items-center gap-2">
+            {hasAccess ? (
+              <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-800 text-xs font-bold mb-4 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Ce déblocage est 100% GRATUIT grâce à votre semaine offerte !</span>
+                <span>
+                  {isSubActive
+                    ? 'Déblocage illimité inclus dans votre abonnement client actif !'
+                    : 'Ce déblocage est 100% GRATUIT grâce à votre semaine offerte !'}
+                </span>
               </div>
             ) : (
               <div className="space-y-3 mb-4">
-                <p className="text-xs font-bold text-slate-800">
-                  Montant à régler : <span className="text-brand-600">1 000 FCFA</span>
-                </p>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Moyen de Paiement Mobile Money
-                  </label>
-                  <select
-                    value={momoOperator}
-                    onChange={(e) => setMomoOperator(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
-                  >
-                    <option value="MTN_MOMO">MTN Mobile Money</option>
-                    <option value="ORANGE_MONEY">Orange Money</option>
-                    <option value="MOOV_MONEY">Moov Money</option>
-                    <option value="WAVE">Wave</option>
-                  </select>
+                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs">
+                  <p className="font-bold">⚠️ Votre semaine gratuite de 7 jours est expirée.</p>
+                  <p className="text-[11px] text-amber-800 mt-0.5">
+                    Réglez les frais de mise en contact unitaire pour afficher le numéro direct et WhatsApp.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between text-xs font-bold p-2.5 bg-slate-50 rounded-xl">
+                  <span>Frais de mise en relation :</span>
+                  <span className="text-brand-600 font-black">1 000 FCFA</span>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Numéro de Téléphone</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Numéro Mobile Money (Optionnel pour préremplissage)
+                  </label>
                   <input
                     type="tel"
                     placeholder="Ex: 0700000000"
                     value={momoPhone}
                     onChange={(e) => setMomoPhone(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-brand-500"
+                    className="w-full min-h-[42px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
                   />
                 </div>
               </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 pt-2 border-t border-slate-100">
               <button
+                type="button"
                 onClick={() => setUnlockModalProvider(null)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs"
+                className="inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex-1"
               >
                 Annuler
               </button>
               <button
+                type="button"
                 onClick={handleConfirmUnlock}
-                className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-xs"
+                className="inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition flex-1"
               >
-                {isTrialActive ? 'Débloquer Gratuitement' : 'Payer 1 000 FCFA'}
+                {hasAccess ? 'Débloquer Gratuitement' : 'Payer 1 000 FCFA (SasPay)'}
               </button>
             </div>
           </div>
@@ -907,11 +1030,11 @@ export const ClientView: React.FC<ClientViewProps> = ({
 
       {/* Modal Remboursement */}
       {refundModalItem && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-auto">
             <h4 className="text-base font-black text-slate-900 mb-1">Demande de Remboursement</h4>
             <p className="text-xs text-slate-500 mb-3">
-              Chaque demande est soumise à validation manuelle par l'administrateur.
+              Chaque réclamation est vérifiée avec bienveillance par l'équipe support.
             </p>
 
             <div className="mb-4">
@@ -921,22 +1044,24 @@ export const ClientView: React.FC<ClientViewProps> = ({
                 required
                 value={refundReason}
                 onChange={(e) => setRefundReason(e.target.value)}
-                placeholder="Ex: Le numéro ne répond pas, le prestataire refuse d'intervenir, etc."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-brand-500"
+                placeholder="Ex: Le numéro ne répond pas, le prestataire refuse d'intervenir..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 pt-2 border-t border-slate-100">
               <button
+                type="button"
                 onClick={() => setRefundModalItem(null)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs"
+                className="inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex-1"
               >
                 Fermer
               </button>
               <button
+                type="button"
                 onClick={handleRequestRefund}
                 disabled={!refundReason.trim()}
-                className="flex-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-xs shadow-xs"
+                className="inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-xs transition flex-1"
               >
                 Envoyer la demande
               </button>

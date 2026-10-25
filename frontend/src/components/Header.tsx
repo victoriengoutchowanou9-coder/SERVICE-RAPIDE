@@ -89,13 +89,13 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 onClick={() => onNavigateAuth('LOGIN')}
-                className="text-xs font-bold text-slate-700 hover:text-brand-600 px-2.5 py-1.5 transition"
+                className="inline-flex items-center justify-center h-9 sm:h-10 px-2.5 sm:px-3 text-xs sm:text-sm font-bold text-slate-700 hover:text-brand-600 hover:bg-slate-100 rounded-xl transition-all"
               >
                 Connexion
               </button>
               <button
                 onClick={() => onNavigateAuth('REGISTER')}
-                className="text-xs font-black bg-brand-600 hover:bg-brand-700 text-white px-3 sm:px-3.5 py-1.5 rounded-xl shadow-xs transition"
+                className="inline-flex items-center justify-center h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white rounded-xl shadow-xs transition-all"
               >
                 S'inscrire
               </button>
@@ -106,8 +106,8 @@ export const Header: React.FC<HeaderProps> = ({
           {user && (
             <button
               onClick={onLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl transition text-xs font-black shadow-xs"
-              title="Se déconnecter pour voir le formulaire d'inscription"
+              className="inline-flex items-center justify-center h-9 sm:h-10 px-3 sm:px-3.5 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 border border-rose-200 rounded-xl transition text-xs sm:text-sm font-bold shadow-xs"
+              title="Se déconnecter"
             >
               <span>Se déconnecter</span>
             </button>

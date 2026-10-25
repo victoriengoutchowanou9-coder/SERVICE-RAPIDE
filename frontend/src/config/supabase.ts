@@ -87,9 +87,16 @@ export const supabaseBackend = {
         user: {
           id: signInData.user.id,
           email: signInData.user.email,
+          firstName: profile?.firstName || signInData.user.user_metadata?.firstName || '',
+          lastName: profile?.lastName || signInData.user.user_metadata?.lastName || '',
           role: profile?.role || 'PENDING',
           countryCode: profile?.countryCode || payload.countryCode || 'CI',
           preferredLanguage: profile?.preferredLanguage || 'fr',
+          avatarUrl: profile?.avatarUrl || '',
+          phoneNumber: profile?.phoneNumber || '',
+          clientTrialExpiresAt: profile?.clientTrialExpiresAt,
+          clientSubscriptionExpiresAt: profile?.clientSubscriptionExpiresAt,
+          createdAt: profile?.createdAt || signInData.user.created_at,
           providerProfile: providerProfile || null,
         },
       };
@@ -225,8 +232,12 @@ export const supabaseBackend = {
         role: profile?.role || 'PENDING',
         countryCode: profile?.countryCode || session.user.user_metadata?.countryCode || 'CI',
         preferredLanguage: profile?.preferredLanguage || session.user.user_metadata?.preferredLanguage || 'fr',
-        providerProfile: providerProfile || null,
+        avatarUrl: profile?.avatarUrl || '',
+        phoneNumber: profile?.phoneNumber || '',
         clientTrialExpiresAt: profile?.clientTrialExpiresAt,
+        clientSubscriptionExpiresAt: profile?.clientSubscriptionExpiresAt,
+        createdAt: profile?.createdAt || session.user.created_at,
+        providerProfile: providerProfile || null,
       },
     };
   },
@@ -321,5 +332,84 @@ export const supabaseBackend = {
         updatedAt: new Date().toISOString(),
       })
       .eq('userId', userId);
+  },
+
+  /**
+   * 7. Sauvegarde du profil client
+   */
+  async updateClientProfile(userId: string, data: { firstName?: string; lastName?: string; phoneNumber?: string; avatarUrl?: string; city?: string }) {
+    if (!isSupabaseConfigured || !userId) return;
+    await supabase
+      .from('users')
+      .update({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phoneNumber: data.phoneNumber,
+        avatarUrl: data.avatarUrl,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('id', userId);
+  },
+
+  /**
+   * 8. Historique des paiements de l'utilisateur
+   */
+  async getPaymentHistory(userId: string) {
+    if (!isSupabaseConfigured || !userId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('userId', userId)
+        .order('createdAt', { ascending: false });
+      if (error) {
+        console.warn('Erreur récupération paiements :', error.message);
+        return [];
+      }
+      return data || [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * 9. Récupérer les contacts déjà débloqués par un client
+   */
+  async getContactUnlocks(clientId: string) {
+    if (!isSupabaseConfigured || !clientId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('contact_unlocks')
+        .select('*')
+        .eq('clientId', clientId);
+      if (error) return [];
+      return data || [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * 10. Rechargement des données fraîches de l'utilisateur
+   */
+  async refreshUserData(userId: string) {
+    if (!isSupabaseConfigured || !userId) return null;
+    try {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const { data: providerProfile } = await supabase
+        .from('provider_profiles')
+        .select('*')
+        .eq('userId', userId)
+        .maybeSingle();
+
+      return { profile, providerProfile };
+    } catch {
+      return null;
+    }
   },
 };

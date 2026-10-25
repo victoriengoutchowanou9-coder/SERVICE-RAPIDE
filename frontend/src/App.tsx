@@ -40,10 +40,17 @@ export function App() {
       const pathname = window.location.pathname.toLowerCase();
       const search = window.location.search;
 
-      if (search.includes('payment=success')) {
+      if (search.includes('payment=success') || search.includes('payment_status=success')) {
         setPaymentAlert('🎉 Paiement Mobile Money validé avec succès via SasPay ! Votre accès est immédiatement actif.');
+        // Rechargement immédiat des droits frais depuis la base de données
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
+          if (session?.user) {
+            const fresh = await supabaseBackend.buildSessionUser(session);
+            if (fresh) setAuthData(fresh);
+          }
+        });
         setTimeout(() => setPaymentAlert(null), 7000);
-      } else if (search.includes('payment=cancelled')) {
+      } else if (search.includes('payment=cancelled') || search.includes('payment_status=cancelled')) {
         setPaymentAlert('Paiement annulé. Vous pouvez relancer la transaction à tout moment.');
         setTimeout(() => setPaymentAlert(null), 5000);
       }
@@ -272,6 +279,7 @@ export function App() {
 
             {user && user.role === 'PENDING' && (
               <RoleSelectionModal
+                user={user}
                 token={token}
                 onRoleChosen={handleRoleChosen}
               />

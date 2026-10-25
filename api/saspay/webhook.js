@@ -128,6 +128,19 @@ module.exports = async (req, res) => {
       console.log('✅ Abonnement prestataire prolongé de 30 jours avec succès !');
     }
 
+    // 2b. Si c'est un abonnement client (pass mensuel de contact)
+    if (action === 'CLIENT_SUBSCRIPTION' && userId) {
+      await pgClient.query(`
+        UPDATE public.users
+        SET 
+          "clientSubscriptionExpiresAt" = GREATEST(COALESCE("clientSubscriptionExpiresAt", NOW()), NOW()) + INTERVAL '30 days',
+          "updatedAt" = NOW()
+        WHERE id = $1;
+      `, [userId]);
+
+      console.log('✅ Abonnement client mensuel activé pour 30 jours !');
+    }
+
     // 3. Si c'est un déblocage de contact : créer l'entrée contact_unlocks
     if (action === 'CONTACT_UNLOCK' && userId && providerId) {
       await pgClient.query(`

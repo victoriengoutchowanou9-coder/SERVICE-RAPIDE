@@ -3,11 +3,13 @@ import { User, Briefcase, Sparkles, Check, ArrowRight } from 'lucide-react';
 import { supabaseBackend } from '../config/supabase';
 
 interface RoleSelectionModalProps {
+  user?: any;
   onRoleChosen: (roleData: any) => void;
-  token: string;
+  token?: string;
 }
 
 export const RoleSelectionModal: React.FC<RoleSelectionModalProps> = ({
+  user,
   onRoleChosen,
   token,
 }) => {
@@ -15,19 +17,21 @@ export const RoleSelectionModal: React.FC<RoleSelectionModalProps> = ({
   const [loading, setLoading] = useState(false);
 
   // Informations initiales si Prestataire
-  const [singleName, setSingleName] = useState('');
+  const [singleName, setSingleName] = useState(user?.firstName || '');
   const [serviceOffered, setServiceOffered] = useState('');
-  const [city, setCity] = useState('');
-  const [department, setDepartment] = useState('');
-  const [phone, setPhone] = useState('');
+  const [city, setCity] = useState(user?.city || 'Abidjan');
+  const [department, setDepartment] = useState(user?.department || 'Centre');
+  const [phone, setPhone] = useState(user?.phoneNumber || '');
 
   const handleConfirm = async () => {
     if (!selectedRole) return;
     setLoading(true);
 
+    const targetUserId = user?.id || token || '';
+
     const payload: any = { role: selectedRole };
     if (selectedRole === 'PROVIDER') {
-      payload.singleName = singleName || 'Professionnel';
+      payload.singleName = singleName || user?.firstName || 'Professionnel';
       payload.serviceOffered = serviceOffered || 'Services Généraux';
       payload.city = city || 'Abidjan';
       payload.department = department || 'Centre';
@@ -36,7 +40,7 @@ export const RoleSelectionModal: React.FC<RoleSelectionModalProps> = ({
     }
 
     try {
-      const data = await supabaseBackend.chooseRole(token, payload);
+      const data = await supabaseBackend.chooseRole(targetUserId, payload);
       onRoleChosen({ role: selectedRole, details: data });
     } catch {
       // Fallback local

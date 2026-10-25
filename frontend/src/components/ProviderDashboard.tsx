@@ -28,6 +28,7 @@ import { FeedPosts } from './FeedPosts';
 import { AdsSection } from './AdsSection';
 import { PostItem, ServiceRequest, ReviewItem } from '../types';
 import { supabaseBackend } from '../config/supabase';
+import { saspayClient } from '../config/saspay';
 
 interface ProviderDashboardProps {
   user: any;
@@ -236,7 +237,25 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
     }
   };
 
-  const handlePaySubscription = () => {
+  const handlePaySubscription = async () => {
+    try {
+      const checkoutUrl = await saspayClient.createCheckoutSession({
+        amount: 5000,
+        customer_email: user?.email || 'prestataire@servicerapide.africa',
+        customer_name:
+          `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || profile.singleName || 'Prestataire SERVICE RAPIDE',
+        metadata: {
+          userId: user?.id,
+          providerProfileId: profile.id,
+          action: 'PROVIDER_SUBSCRIPTION',
+        },
+      });
+      window.location.href = checkoutUrl;
+      return;
+    } catch (err: any) {
+      console.error('Erreur initialisation SasPay :', err);
+    }
+
     const newDate = new Date(expiresDate.getTime() + 30 * 24 * 3600 * 1000);
     setProfile((prev: any) => ({
       ...prev,

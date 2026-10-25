@@ -30,6 +30,7 @@ import { AdsSection } from './AdsSection';
 import { FeedPosts } from './FeedPosts';
 import { ClientProfileModal } from './ClientProfileModal';
 import { SupportModal } from './SupportModal';
+import { saspayClient } from '../config/saspay';
 
 interface ClientViewProps {
   user: any;
@@ -165,6 +166,27 @@ export const ClientView: React.FC<ClientViewProps> = ({
     if (prov.availability === 'BUSY') {
       alert('Impossible : Ce prestataire est actuellement OCCUPÉ.');
       return;
+    }
+
+    // Si la période d'essai n'est plus active, déclencher le paiement sécurisé SasPay
+    if (!isTrialActive) {
+      try {
+        const checkoutUrl = await saspayClient.createCheckoutSession({
+          amount: 1000,
+          customer_email: user?.email || 'client@servicerapide.africa',
+          customer_name: `${user?.firstName || 'Client'} ${user?.lastName || ''}`.trim() || 'Client SERVICE RAPIDE',
+          customer_phone: momoPhone || '',
+          metadata: {
+            userId: user?.id,
+            providerId: prov.id,
+            action: 'CONTACT_UNLOCK',
+          },
+        });
+        window.location.href = checkoutUrl;
+        return;
+      } catch (err: any) {
+        console.error('Erreur initialisation SasPay :', err);
+      }
     }
 
     setInternalProviders((prev) =>

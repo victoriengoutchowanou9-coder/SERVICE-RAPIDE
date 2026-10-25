@@ -15,6 +15,7 @@ export function App() {
   const [viewMode, setViewMode] = useState<'LANDING' | 'APP'>('LANDING'); // Par défaut : Site Web Vitrine
   const [authInitialMode, setAuthInitialMode] = useState<'LOGIN' | 'REGISTER'>('REGISTER');
   const [authData, setAuthData] = useState<any>(null);
+  const [paymentAlert, setPaymentAlert] = useState<string | null>(null);
 
   // Navigation interne sans rechargement
   const navigateTo = (path: string, mode: 'LOGIN' | 'REGISTER' = 'REGISTER') => {
@@ -32,11 +33,21 @@ export function App() {
     }
   };
 
-  // Synchronisation avec l'URL au chargement et lors de l'utilisation des boutons Précédent/Suivant
+  // Synchronisation avec l'URL au chargement et retours SasPay
   useEffect(() => {
     const handleUrlRoute = () => {
       if (typeof window === 'undefined') return;
       const pathname = window.location.pathname.toLowerCase();
+      const search = window.location.search;
+
+      if (search.includes('payment=success')) {
+        setPaymentAlert('🎉 Paiement Mobile Money validé avec succès via SasPay ! Votre accès est immédiatement actif.');
+        setTimeout(() => setPaymentAlert(null), 7000);
+      } else if (search.includes('payment=cancelled')) {
+        setPaymentAlert('Paiement annulé. Vous pouvez relancer la transaction à tout moment.');
+        setTimeout(() => setPaymentAlert(null), 5000);
+      }
+
       if (pathname === '/inscription' || pathname === '/register') {
         setViewMode('APP');
         setAuthInitialMode('REGISTER');
@@ -221,6 +232,15 @@ export function App() {
         onGoHome={() => navigateTo('/', 'REGISTER')}
         onNavigateAuth={(mode) => navigateTo(mode === 'LOGIN' ? '/connexion' : '/inscription', mode)}
       />
+
+      {paymentAlert && (
+        <div className="bg-emerald-600 text-white text-xs font-bold py-2.5 px-4 text-center shadow-md animate-fadeIn flex items-center justify-center gap-2">
+          <span>{paymentAlert}</span>
+          <button onClick={() => setPaymentAlert(null)} className="text-white/80 hover:text-white font-black ml-2">
+            ✕
+          </button>
+        </div>
+      )}
 
       <main className="flex-1">
         {/* SITE WEB VITRINE COMPLET */}

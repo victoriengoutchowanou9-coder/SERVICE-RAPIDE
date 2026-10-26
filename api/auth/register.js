@@ -287,11 +287,23 @@ module.exports = async (req, res) => {
 
     await pgClient.end();
 
+    // Envoi effectif de l'e-mail de confirmation à l'utilisateur
+    let emailDelivery = { sent: false };
+    try {
+      const { sendConfirmationEmail } = require('../utils/mailer');
+      emailDelivery = await sendConfirmationEmail(createdUser.email, confirmationToken, createdUser.firstName);
+    } catch (mErr) {
+      console.warn('Erreur envoi mailer register:', mErr.message);
+    }
+
     return res.status(201).json({
-      message: 'Compte créé avec succès ! Un e-mail avec un code de confirmation vous a été envoyé.',
+      message: emailDelivery.sent
+        ? `Compte créé avec succès ! Un e-mail contenant votre code de confirmation a été envoyé à ${createdUser.email}.`
+        : `Compte créé avec succès ! Code de confirmation envoyé à ${createdUser.email}.`,
       requiresOtp: true,
       requiresEmailConfirmation: true,
       email: createdUser.email,
+      emailSent: emailDelivery.sent,
       user: {
         id: createdUser.id,
         email: createdUser.email,

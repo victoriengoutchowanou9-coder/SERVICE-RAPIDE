@@ -96,9 +96,19 @@ module.exports = async (req, res) => {
 
     await pgClient.end();
 
+    // Envoi effectif de l'e-mail de confirmation
+    let emailDelivery = { sent: false };
+    try {
+      const { sendConfirmationEmail } = require('../utils/mailer');
+      emailDelivery = await sendConfirmationEmail(authUser.email, newToken);
+    } catch (mErr) {
+      console.warn('Erreur envoi mailer resend:', mErr.message);
+    }
+
     return res.status(200).json({
       message: 'Un nouveau code de confirmation a été envoyé à votre adresse e-mail.',
       email: authUser.email,
+      emailSent: emailDelivery.sent,
     });
   } catch (err) {
     console.error('Erreur API Resend Confirmation:', err);

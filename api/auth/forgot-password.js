@@ -102,9 +102,19 @@ module.exports = async (req, res) => {
 
     await pgClient.end();
 
+    // Envoi effectif de l'e-mail de réinitialisation
+    let emailDelivery = { sent: false };
+    try {
+      const { sendPasswordResetEmail } = require('../utils/mailer');
+      emailDelivery = await sendPasswordResetEmail(authUser.email, recoveryCode);
+    } catch (mErr) {
+      console.warn('Erreur envoi mailer forgot:', mErr.message);
+    }
+
     return res.status(200).json({
       message: 'Un code de réinitialisation à 6 chiffres a été envoyé à votre adresse email.',
       email: authUser.email,
+      emailSent: emailDelivery.sent,
     });
   } catch (err) {
     console.error('Erreur API Forgot Password:', err);

@@ -4,6 +4,7 @@
   "private": true,
   "description": "Plateforme Service Rapide Panafrique",
   "dependencies": {
+    "nodemailer": "^10.2.1",
     "pg": "^8.11.3"
   }
 }

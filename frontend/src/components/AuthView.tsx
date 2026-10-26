@@ -5,6 +5,7 @@ import {
   User,
   Phone,
   ArrowRight,
+  ArrowLeft,
   CheckCircle2,
   AlertCircle,
   Eye,
@@ -32,12 +33,12 @@ export const AuthView: React.FC<AuthViewProps> = ({
   onNavigate,
   onSuccess,
 }) => {
-  // Modes : 'REGISTER' | 'LOGIN' | 'OTP'
-  const [mode, setMode] = useState<'REGISTER' | 'LOGIN' | 'OTP'>(initialMode);
+  // Modes : 'REGISTER' | 'LOGIN' | 'OTP' | 'FORGOT_PASSWORD' | 'RESET_PASSWORD'
+  const [mode, setMode] = useState<'REGISTER' | 'LOGIN' | 'OTP' | 'FORGOT_PASSWORD' | 'RESET_PASSWORD'>(initialMode);
 
   // Synchronisation si initialMode change depuis l'URL ou le Header
   useEffect(() => {
-    if (initialMode && mode !== 'OTP') {
+    if (initialMode && mode !== 'OTP' && mode !== 'FORGOT_PASSWORD' && mode !== 'RESET_PASSWORD') {
       setMode(initialMode);
     }
   }, [initialMode]);
@@ -51,6 +52,14 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [serviceOffered, setServiceOffered] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Réinitialisation de mot de passe (Mot de passe oublié)
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
 
   // Géographie hiérarchique
   const [geo, setGeo] = useState<GeoSelection>({
@@ -268,6 +277,87 @@ export const AuthView: React.FC<AuthViewProps> = ({
     }
   };
 
+  // Demande de code de réinitialisation (Mot de passe oublié)
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setFeedbackSuccess(null);
+    const cleanInput = emailOrIdentifier.trim();
+    if (!cleanInput) {
+      setError('Veuillez saisir votre adresse email.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const data: any = await supabaseBackend.forgotPassword(cleanInput);
+      setFeedbackSuccess(data.message || 'Un code de réinitialisation a été envoyé par e-mail.');
+      setMode('RESET_PASSWORD');
+      setResendCooldown(60);
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la demande de réinitialisation.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Validation du code et enregistrement du nouveau mot de passe
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setFeedbackSuccess(null);
+
+    const cleanInput = emailOrIdentifier.trim();
+    if (!resetCode.trim() || resetCode.trim().length !== 6) {
+      setError('Le code de réinitialisation doit comporter 6 chiffres.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError('Le nouveau mot de passe doit comporter au moins 8 caractères.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setError('Les mots de passe ne correspondent pas.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data: any = await supabaseBackend.resetPassword({
+        email: cleanInput,
+        token: resetCode.trim(),
+        newPassword,
+      });
+      setFeedbackSuccess(data.message || 'Votre mot de passe a été modifié avec succès ! Connectez-vous avec votre nouveau mot de passe.');
+      setPassword('');
+      setConfirmPassword('');
+      setResetCode('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setMode('LOGIN');
+    } catch (err: any) {
+      setError(err.message || 'Impossible de réinitialiser le mot de passe.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Renvoi du code de réinitialisation
+  const handleResendResetCode = async () => {
+    if (resendCooldown > 0) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const cleanEmail = emailOrIdentifier.trim().toLowerCase();
+      const data: any = await supabaseBackend.forgotPassword(cleanEmail);
+      setFeedbackSuccess(data.message || 'Nouveau code envoyé par email.');
+      setResendCooldown(60);
+    } catch (err: any) {
+      setError(err.message || 'Impossible de renvoyer le code pour le moment.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-xl mx-auto px-4 py-8">
       <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-100">
@@ -278,6 +368,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
               ? 'Validation de Sécurité OTP'
               : mode === 'REGISTER'
               ? 'Créer votre compte'
+              : mode === 'FORGOT_PASSWORD'
+              ? 'Mot de passe oublié'
+              : mode === 'RESET_PASSWORD'
+              ? 'Nouveau mot de passe'
               : 'Connexion à votre espace'}
           </h2>
           <p className="text-xs text-slate-500 mt-1">
@@ -285,9 +379,20 @@ export const AuthView: React.FC<AuthViewProps> = ({
               ? `Entrez le code à 6 chiffres envoyé à ${emailOrIdentifier}`
               : mode === 'REGISTER'
               ? 'Remplissez le formulaire pour rejoindre SERVICE RAPIDE'
+              : mode === 'FORGOT_PASSWORD'
+              ? 'Saisissez votre email pour recevoir votre code de réinitialisation'
+              : mode === 'RESET_PASSWORD'
+              ? `Entrez le code reçu et choisissez votre nouveau mot de passe`
               : 'Saisissez vos identifiants pour continuer'}
           </p>
         </div>
+
+        {feedbackSuccess && (
+          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-medium flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+            <span>{feedbackSuccess}</span>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-medium flex items-center gap-2">
@@ -365,8 +470,192 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </button>
             </div>
           </form>
+        ) : mode === 'FORGOT_PASSWORD' ? (
+          /* 2. FORMULAIRE MOT DE PASSE OUBLIÉ */
+          <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Adresse email associée à votre compte *
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="email"
+                  required
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  value={emailOrIdentifier}
+                  onChange={(e) => setEmailOrIdentifier(e.target.value)}
+                  placeholder="votre.email@exemple.com"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
+                Entrez votre adresse email. Nous vous enverrons immédiatement un code de réinitialisation sécurisé à 6 chiffres.
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !emailOrIdentifier.trim()}
+              className="w-full mt-3 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white font-black py-3.5 px-4 rounded-xl shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2 text-xs uppercase tracking-wider disabled:opacity-60"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Envoi en cours...</span>
+                </div>
+              ) : (
+                <>
+                  <span>Envoyer le code de réinitialisation</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+            <div className="text-center pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('LOGIN');
+                  setError(null);
+                  setFeedbackSuccess(null);
+                }}
+                className="text-xs font-bold text-slate-500 hover:text-brand-600 hover:underline inline-flex items-center gap-1.5 transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Retour à la connexion</span>
+              </button>
+            </div>
+          </form>
+        ) : mode === 'RESET_PASSWORD' ? (
+          /* 3. FORMULAIRE DÉFINITION DU NOUVEAU MOT DE PASSE */
+          <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Code de réinitialisation (6 chiffres) *
+              </label>
+              <div className="relative">
+                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  autoComplete="off"
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Ex: 123456"
+                  className="w-full text-center tracking-widest text-lg font-black bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700">
+                  Nouveau mot de passe *
+                </label>
+                <span className="text-[10px] text-slate-400 font-semibold">
+                  Au moins 8 caractères
+                </span>
+              </div>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  required
+                  minLength={8}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Votre nouveau mot de passe"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Confirmer le nouveau mot de passe *
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type={showConfirmNewPassword ? 'text' : 'password'}
+                  required
+                  minLength={8}
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="Répétez votre nouveau mot de passe"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showConfirmNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || resetCode.length !== 6 || newPassword.length < 8}
+              className="w-full mt-3 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white font-black py-3.5 px-4 rounded-xl shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2 text-xs uppercase tracking-wider disabled:opacity-60"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Enregistrement...</span>
+                </div>
+              ) : (
+                <>
+                  <span>Enregistrer le nouveau mot de passe</span>
+                  <CheckCircle2 className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+              <button
+                type="button"
+                disabled={loading || resendCooldown > 0}
+                onClick={handleResendResetCode}
+                className="text-brand-600 font-bold hover:underline flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                <span>
+                  {resendCooldown > 0
+                    ? `Renvoyer le code (${resendCooldown}s)`
+                    : 'Renvoyer le code'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('LOGIN');
+                  setError(null);
+                  setFeedbackSuccess(null);
+                }}
+                className="text-slate-500 font-medium hover:underline flex items-center gap-1"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Retour à la connexion</span>
+              </button>
+            </div>
+          </form>
         ) : (
-          /* 2. FORMULAIRE D'INSCRIPTION / CONNEXION */
+          /* 4. FORMULAIRE D'INSCRIPTION / CONNEXION */
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* PRÉNOM ET NOM (INSCRIPTION SEULEMENT) */}
             {mode === 'REGISTER' && (
@@ -566,9 +855,23 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 <label className="block text-xs font-bold text-slate-700">
                   Mot de passe *
                 </label>
-                <span className="text-[10px] text-slate-400 font-semibold">
-                  Au moins 8 caractères
-                </span>
+                {mode === 'LOGIN' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('FORGOT_PASSWORD');
+                      setError(null);
+                      setFeedbackSuccess(null);
+                    }}
+                    className="text-[11px] font-bold text-brand-600 hover:text-brand-700 hover:underline transition"
+                  >
+                    Mot de passe oublié ?
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-slate-400 font-semibold">
+                    Au moins 8 caractères
+                  </span>
+                )}
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -649,7 +952,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
         )}
 
         {/* BASCULE CONNEXION / INSCRIPTION */}
-        {mode !== 'OTP' && (
+        {(mode === 'REGISTER' || mode === 'LOGIN') && (
           <div className="mt-6 pt-5 border-t border-slate-100 text-center">
             {mode === 'REGISTER' ? (
               <p className="text-xs text-slate-600 font-medium">

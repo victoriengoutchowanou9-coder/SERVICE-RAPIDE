@@ -375,7 +375,95 @@ export const supabaseBackend = {
   },
 
   /**
-   * 4. Reconstruction des données utilisateur complètes à partir d'une session Supabase
+   * 4. Demande de réinitialisation de mot de passe (Mot de passe oublié)
+   */
+  async forgotPassword(email: string) {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // 1. Tentative via l'API dédiée
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        return data;
+      }
+      if (res.status === 429) {
+        throw new Error(data.error || 'Veuillez patienter 60 secondes avant une nouvelle demande.');
+      }
+      if (!res.ok && res.status !== 404) {
+        throw new Error(data.error || 'Erreur lors de la demande de réinitialisation.');
+      }
+    } catch (e: any) {
+      if (e.message && !e.message.includes('fetch')) {
+        throw e;
+      }
+    }
+
+    // 2. Fallback Supabase client
+    if (isSupabaseConfigured) {
+      const currentOrigin =
+        typeof window !== 'undefined' && window.location.origin
+          ? window.location.origin
+          : 'https://servicerapide.vercel.app';
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: currentOrigin,
+      });
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
+
+    return { message: 'Un code de réinitialisation a été envoyé à votre adresse email.' };
+  },
+
+  /**
+   * 5. Validation du code et définition du nouveau mot de passe
+   */
+  async resetPassword(payload: { email: string; token: string; newPassword: string }) {
+    const cleanEmail = payload.email.trim().toLowerCase();
+    const cleanToken = payload.token.trim();
+    const newPassword = payload.newPassword.trim();
+
+    // 1. Tentative via l'API dédiée
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          token: cleanToken,
+          newPassword,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        return data;
+      }
+      throw new Error(data.error || 'Impossible de réinitialiser le mot de passe.');
+    } catch (e: any) {
+      if (e.message && !e.message.includes('fetch')) {
+        throw e;
+      }
+    }
+
+    // 2. Fallback Supabase client
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        throw new Error(error.message);
+      }
+      return { success: true, message: 'Votre mot de passe a été mis à jour avec succès.' };
+    }
+
+    throw new Error('Erreur lors de la réinitialisation du mot de passe.');
+  },
+
+  /**
+   * 6. Reconstruction des données utilisateur complètes à partir d'une session Supabase
    */
   async buildSessionUser(session: any) {
     if (!session?.user) return null;

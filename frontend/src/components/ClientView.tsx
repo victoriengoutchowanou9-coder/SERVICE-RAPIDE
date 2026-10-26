@@ -757,18 +757,24 @@ export const ClientView: React.FC<ClientViewProps> = ({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-              Réalisations & Conseils des Prestataires
+              Réalisations, Conseils & Publicités Panafricaines
             </h3>
             <span className="text-[10px] text-slate-400">Fil d'actualité en direct</span>
           </div>
-          <FeedPosts userRole="CLIENT" currentUser={user} posts={posts} onAddPost={onAddPost} />
+          <FeedPosts
+            userRole="CLIENT"
+            currentUser={user}
+            posts={posts}
+            onAddPost={onAddPost}
+            onOpenAds={() => setActiveTab('ADS')}
+          />
         </div>
       )}
 
       {/* ONGLET 4 : PUBLICITÉS PANAFRICAINES */}
       {activeTab === 'ADS' && (
         <div className="space-y-4">
-          <AdsSection />
+          <AdsSection currentUser={user} />
         </div>
       )}
 

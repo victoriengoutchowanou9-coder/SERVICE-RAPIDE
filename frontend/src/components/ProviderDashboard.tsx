@@ -1212,13 +1212,14 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
           
           <div className="space-y-3">
             <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-              Publications & Réalisations
+              Publications, Réalisations & Publicités
             </h3>
             <FeedPosts
               userRole="PROVIDER"
               currentUser={{ ...user, providerProfile: profile }}
               posts={posts}
               onAddPost={onAddPost}
+              onOpenAds={() => setActiveSubTab('ADS')}
             />
           </div>
         </div>
@@ -1227,7 +1228,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
       {/* ONGLET 5 : PUBLICITÉS */}
       {activeSubTab === 'ADS' && (
         <div className="space-y-4">
-          <AdsSection />
+          <AdsSection currentUser={{ ...user, providerProfile: profile }} />
         </div>
       )}
 

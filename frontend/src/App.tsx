@@ -6,6 +6,7 @@ import { RoleSelectionModal } from './components/RoleSelectionModal';
 import { ProviderDashboard } from './components/ProviderDashboard';
 import { ClientView } from './components/ClientView';
 import { AdminDashboard } from './components/AdminDashboard';
+import { InstallAppModal } from './components/InstallAppModal';
 import { PostItem, ProviderItem, ServiceRequest } from './types';
 import { supabase, supabaseBackend } from './config/supabase';
 
@@ -21,6 +22,7 @@ export function App() {
   // État du menu trois traits (☰)
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeDrawerSection, setActiveDrawerSection] = useState<string>('');
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   // Navigation interne sans rechargement
   const navigateTo = (path: string, mode: 'LOGIN' | 'REGISTER' = 'LOGIN') => {
@@ -237,14 +239,21 @@ export function App() {
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900">
       {/* MENU TIROIR VERTICAL (☰) */}
       {user && (
-        <NavigationDrawer
-          isOpen={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          user={user}
-          currentSection={activeDrawerSection}
-          onSelectSection={(sec) => setActiveDrawerSection(sec)}
-          onLogout={handleLogout}
-        />
+        <>
+          <NavigationDrawer
+            isOpen={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            user={user}
+            currentSection={activeDrawerSection}
+            onSelectSection={(sec) => setActiveDrawerSection(sec)}
+            onLogout={handleLogout}
+            onOpenInstallModal={() => setIsInstallModalOpen(true)}
+          />
+          <InstallAppModal
+            isOpen={isInstallModalOpen}
+            onClose={() => setIsInstallModalOpen(false)}
+          />
+        </>
       )}
 
       {/* EN-TÊTE OFFICIEL DE L'APPLICATION */}

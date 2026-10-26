@@ -14,6 +14,7 @@ import {
   Bug,
   HelpCircle,
   Sparkles,
+  Download,
 } from 'lucide-react';
 
 interface NavigationDrawerProps {
@@ -23,6 +24,7 @@ interface NavigationDrawerProps {
   currentSection: string;
   onSelectSection: (section: string) => void;
   onLogout: () => void;
+  onOpenInstallModal?: () => void;
 }
 
 export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
@@ -32,6 +34,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
   currentSection,
   onSelectSection,
   onLogout,
+  onOpenInstallModal,
 }) => {
   if (!isOpen) return null;
 
@@ -339,6 +342,21 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
               </button>
             </>
           )}
+        </div>
+
+        {/* Téléchargement / Installation de l'application */}
+        <div className="p-3 border-t border-slate-100 bg-white">
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onOpenInstallModal?.();
+            }}
+            className="w-full inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 active:scale-[0.99] text-white font-black px-3.5 py-2.5 rounded-2xl text-xs transition shadow-md shadow-brand-500/20"
+          >
+            <Download className="w-4 h-4 text-white" />
+            <span>Télécharger l'application</span>
+          </button>
         </div>
 
         {/* Pied du menu : Bouton Déconnexion vertical */}

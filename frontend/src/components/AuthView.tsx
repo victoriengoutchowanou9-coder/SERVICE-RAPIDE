@@ -13,10 +13,12 @@ import {
   KeyRound,
   RefreshCw,
   Briefcase,
+  Download,
 } from 'lucide-react';
 import { supabaseBackend } from '../config/supabase';
 import { GeoCascadeSelect, GeoSelection } from './GeoCascadeSelect';
 import { getDialCodeForCountry } from '../data/geoData';
+import { InstallAppModal } from './InstallAppModal';
 
 interface AuthViewProps {
   country: string;
@@ -88,6 +90,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
   }, [resendCooldown]);
 
   // États UI
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -988,6 +991,31 @@ export const AuthView: React.FC<AuthViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Bannière Télécharger l'application PWA */}
+      <div className="mt-4 p-4 bg-white/95 backdrop-blur-xs rounded-3xl border border-slate-200/80 shadow-md flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <Download className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-black text-slate-900">Télécharger l'application</p>
+            <p className="text-[10px] text-slate-500 font-medium">Installez SERVICE RAPIDE sur votre téléphone</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsInstallModalOpen(true)}
+          className="px-3.5 py-2 bg-brand-600 hover:bg-brand-700 active:scale-95 text-white text-xs font-bold rounded-xl shrink-0 shadow-xs transition"
+        >
+          Installer
+        </button>
+      </div>
+
+      <InstallAppModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+      />
     </div>
   );
 };

@@ -403,7 +403,6 @@ export const AdsSection: React.FC<AdsSectionProps> = ({ compact = false, current
             const isExpired = ad.endDate ? new Date(ad.endDate) < new Date() : false;
             const isPendingPayment = ad.status === 'PENDING_PAYMENT';
             const isPaymentFailed = ad.status === 'PAYMENT_FAILED';
-            const endFormatted = ad.endDate ? new Date(ad.endDate).toLocaleDateString() : '';
 
             return (
               <div
@@ -411,7 +410,7 @@ export const AdsSection: React.FC<AdsSectionProps> = ({ compact = false, current
                 className="group relative bg-white rounded-3xl overflow-hidden border border-slate-200/90 shadow-xs hover:shadow-md transition flex flex-col justify-between"
               >
                 <div>
-                  {ad.imageUrl && (
+                  {ad.imageUrl ? (
                     <div className="relative h-32 w-full overflow-hidden bg-slate-100">
                       <img
                         src={ad.imageUrl}
@@ -446,6 +445,32 @@ export const AdsSection: React.FC<AdsSectionProps> = ({ compact = false, current
                         </span>
                       </div>
                     </div>
+                  ) : (
+                    <div className="p-4 pb-0 flex items-center justify-between gap-2">
+                      <span className="bg-amber-100 text-amber-900 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5">
+                        <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                        <span>{ad.tag || 'Offre Spéciale'}</span>
+                      </span>
+                      <span
+                        className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                          isPendingPayment
+                            ? 'bg-amber-100 text-amber-800'
+                            : isPaymentFailed
+                            ? 'bg-rose-100 text-rose-800'
+                            : isExpired
+                            ? 'bg-slate-100 text-slate-700'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}
+                      >
+                        {isPendingPayment
+                          ? '⏳ En attente de paiement'
+                          : isPaymentFailed
+                          ? '✖ Paiement échoué'
+                          : isExpired
+                          ? 'Expirée'
+                          : 'Diffusée en direct'}
+                      </span>
+                    </div>
                   )}
 
                   <div className="p-4 space-y-2">
@@ -460,26 +485,6 @@ export const AdsSection: React.FC<AdsSectionProps> = ({ compact = false, current
                         {ad.content}
                       </p>
                     </div>
-
-                    {/* Données de diffusion et facturation */}
-                    {ad.amountPaid && (
-                      <div className="bg-slate-50 rounded-2xl p-2.5 border border-slate-100 text-[10px] space-y-1">
-                        <div className="flex items-center justify-between font-bold text-slate-700">
-                          <span>Montant réglé :</span>
-                          <span className="text-emerald-700 font-black">{ad.amountPaid.toLocaleString()} FCFA</span>
-                        </div>
-                        <div className="flex items-center justify-between text-slate-500">
-                          <span>Durée payée :</span>
-                          <span className="font-bold text-slate-800">{ad.durationWeeks || 1} semaine(s)</span>
-                        </div>
-                        {endFormatted && (
-                          <div className="flex items-center justify-between text-slate-500">
-                            <span>Fin de diffusion :</span>
-                            <span className="font-bold text-slate-800">{endFormatted}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
 

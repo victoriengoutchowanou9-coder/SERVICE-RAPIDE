@@ -94,17 +94,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
   const [filterAvailableNowOnly, setFilterAvailableNowOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'DEFAULT' | 'PRICE_ASC' | 'RATING_DESC' | 'MISSIONS_DESC'>('DEFAULT');
 
-  // Gestion rigoureuse de la semaine d'essai (7 jours) et de l'abonnement client
-  const trialExpires = user?.clientTrialExpiresAt ? new Date(user.clientTrialExpiresAt) : null;
-  const isTrialActive = trialExpires ? trialExpires > new Date() : false;
-
-  const subExpires = user?.clientSubscriptionExpiresAt ? new Date(user.clientSubscriptionExpiresAt) : null;
-  const isSubActive = subExpires ? subExpires > new Date() : false;
-
-  const hasAccess = isTrialActive || isSubActive;
-  const daysLeftTrial = trialExpires ? Math.max(0, Math.ceil((trialExpires.getTime() - Date.now()) / (1000 * 3600 * 24))) : 0;
-
-  // Contacts débloqués persistés
+  // Contacts débloqués persistés par le client (paiement unitaire de 1 000 FCFA par contact, sans abonnement)
   const [unlockedProviderIds, setUnlockedProviderIds] = useState<string[]>([]);
 
   // Liste des prestataires enregistrés
@@ -197,7 +187,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
     setTimeout(() => setActionMsg(null), 4000);
   };
 
-  // Déblocage contact
+  // Déblocage contact : Le client paie 1 000 FCFA par contact de prestataire (sans abonnement)
   const handleConfirmUnlock = async () => {
     if (!unlockModalProvider) return;
     const prov = unlockModalProvider;
@@ -207,53 +197,24 @@ export const ClientView: React.FC<ClientViewProps> = ({
       return;
     }
 
-    // Si ni la semaine d'essai ni l'abonnement ne sont actifs, paiement SasPay requis
-    if (!hasAccess) {
-      try {
-        const checkoutUrl = await saspayClient.createCheckoutSession({
-          amount: 1000,
-          customer_email: user?.email || 'client@servicerapide.africa',
-          customer_name: `${user?.firstName || 'Client'} ${user?.lastName || ''}`.trim() || 'Client SERVICE RAPIDE',
-          customer_phone: momoPhone || '',
-          metadata: {
-            userId: user?.id,
-            providerId: prov.id,
-            action: 'CONTACT_UNLOCK',
-          },
-        });
-        window.location.href = checkoutUrl;
-        return;
-      } catch (err: any) {
-        alert("Erreur SasPay : " + (err.message || 'Impossible de joindre le service de paiement'));
-        return;
-      }
+    try {
+      const checkoutUrl = await saspayClient.createCheckoutSession({
+        amount: 1000,
+        customer_email: user?.email || 'client@servicerapide.africa',
+        customer_name: `${user?.firstName || 'Client'} ${user?.lastName || ''}`.trim() || 'Client SERVICE RAPIDE',
+        customer_phone: momoPhone || '',
+        metadata: {
+          userId: user?.id,
+          providerId: prov.id,
+          action: 'CONTACT_UNLOCK',
+        },
+      });
+      window.location.href = checkoutUrl;
+      return;
+    } catch (err: any) {
+      alert("Erreur SasPay : " + (err.message || 'Impossible de joindre le service de paiement'));
+      return;
     }
-
-    setUnlockedProviderIds((prev) => [...prev, prov.id]);
-    setInternalProviders((prev) =>
-      prev.map((p) =>
-        p.id === prov.id
-          ? {
-              ...p,
-              isContactUnlocked: true,
-              unlockId: `unlock-${Date.now()}`,
-              contact: {
-                directPhone: p.contact?.directPhone || '+225 07 89 45 12 00',
-                whatsappNumber: p.contact?.whatsappNumber || '+2250789451200',
-                fullName: p.contact?.fullName || `${p.singleName} Kouamé`,
-              },
-            }
-          : p
-      )
-    );
-
-    setUnlockModalProvider(null);
-    setActionMsg(
-      isTrialActive
-        ? '🎁 Contact débloqué GRATUITEMENT grâce à votre semaine offerte !'
-        : '💳 Contact débloqué avec succès grâce à votre abonnement actif !'
-    );
-    setTimeout(() => setActionMsg(null), 4000);
   };
 
   // Demande remboursement
@@ -302,70 +263,38 @@ export const ClientView: React.FC<ClientViewProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
-      {/* BANNIÈRE D'ÉTAT DE L'ABONNEMENT ET DE L'ESSAI GRATUIT (7 JOURS) */}
-          <div
-            className={`rounded-3xl p-4 sm:p-5 border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs ${
-              hasAccess
-                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-white border-emerald-200'
-                : 'bg-gradient-to-r from-rose-50 via-rose-50/70 to-white border-rose-200'
-            }`}
-          >
-            <div className="flex items-start sm:items-center gap-3">
-              <div
-                className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-                  hasAccess ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-                }`}
-              >
-                {hasAccess ? <Sparkles className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                    Statut de mon accès client
-                  </span>
-                  <span
-                    className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-                      hasAccess ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                    }`}
-                  >
-                    {isSubActive
-                      ? 'Abonnement Actif'
-                      : isTrialActive
-                      ? `Essai Gratuit (${daysLeftTrial}j)`
-                      : 'Essai Expiré'}
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm font-black text-slate-900 mt-0.5">
-                  {isSubActive
-                    ? `Abonnement client valable jusqu'au ${subExpires?.toLocaleDateString()} • Contacts illimités`
-                    : isTrialActive
-                    ? `Semaine offerte active jusqu'au ${trialExpires?.toLocaleDateString()} • Tous les contacts sont accessibles`
-                    : 'Période gratuite de 7 jours terminée : veuillez souscrire pour continuer à voir les contacts.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
-              {!hasAccess ? (
-                <button
-                  type="button"
-                  onClick={() => setShowProfileModal(true)}
-                  className="inline-flex items-center justify-center gap-2 min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition w-full sm:w-auto"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  <span>S'abonner / Débloquer les contacts</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowProfileModal(true)}
-                  className="inline-flex items-center justify-center gap-1.5 min-h-[38px] px-4 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition w-full sm:w-auto"
-                >
-                  <span>Détails de mon pass</span>
-                </button>
-              )}
-            </div>
+      {/* BANNIÈRE MODÈLE CLIENT : SANS ABONNEMENT - 1 000 FCFA PAR CONTACT */}
+      <div className="rounded-3xl p-4 sm:p-5 border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs bg-gradient-to-r from-brand-500/10 via-brand-50 to-white border-brand-200">
+        <div className="flex items-start sm:items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-brand-600 text-white shadow-xs">
+            <Sparkles className="w-5 h-5" />
           </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                Formule Client • Sans abonnement
+              </span>
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-brand-100 text-brand-800">
+                Paiement à l'acte
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm font-black text-slate-900 mt-0.5">
+              1 000 FCFA par contact débloqué • Accès immédiat au numéro direct et WhatsApp du prestataire
+            </p>
+          </div>
+        </div>
+
+        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowProfileModal(true)}
+            className="inline-flex items-center justify-center gap-2 min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 shadow-xs transition w-full sm:w-auto"
+          >
+            <CreditCard className="w-4 h-4 text-brand-600" />
+            <span>Mes contacts ({unlockedProviderIds.length})</span>
+          </button>
+        </div>
+      </div>
 
           {actionMsg && (
             <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
@@ -496,8 +425,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
               filtered.map((item) => {
               const isBusy = item.availability === 'BUSY';
               const isUnlocked = Boolean(
-                (item.isContactUnlocked || unlockedProviderIds.includes(item.id)) &&
-                (hasAccess || unlockedProviderIds.includes(item.id))
+                item.isContactUnlocked || unlockedProviderIds.includes(item.id)
               );
               const estimatedPrice = (item.basePrice || 5000) + (item.travelRequired ? item.travelFee || 0 : 0);
 
@@ -687,37 +615,18 @@ export const ClientView: React.FC<ClientViewProps> = ({
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            {!hasAccess && (
-                              <p className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
-                                <Lock className="w-3 h-3" />
-                                <span>Coordonnées masquées • Semaine gratuite terminée</span>
-                              </p>
-                            )}
+                            <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                              <Lock className="w-3 h-3 text-brand-600" />
+                              <span>Coordonnées masquées • Déblocage unitaire à 1 000 FCFA</span>
+                            </p>
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 w-full">
-                              {!hasAccess && (
-                                <button
-                                  type="button"
-                                  onClick={() => setShowProfileModal(true)}
-                                  className="inline-flex items-center justify-center min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
-                                >
-                                  <span>Voir les Pass</span>
-                                </button>
-                              )}
                               <button
                                 type="button"
                                 onClick={() => setUnlockModalProvider(item)}
-                                className={`inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl text-xs font-black transition flex-1 sm:flex-initial shadow-xs gap-1.5 ${
-                                  hasAccess
-                                    ? 'bg-brand-600 hover:bg-brand-700 text-white'
-                                    : 'bg-slate-900 hover:bg-slate-800 text-white'
-                                }`}
+                                className="inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl text-xs font-black transition flex-1 sm:flex-initial shadow-xs gap-1.5 bg-brand-600 hover:bg-brand-700 text-white"
                               >
                                 <Lock className="w-3.5 h-3.5" />
-                                <span>
-                                  {hasAccess
-                                    ? 'Débloquer le contact (Gratuit - Essai actif)'
-                                    : 'Débloquer ce contact (1 000 FCFA)'}
-                                </span>
+                                <span>Débloquer ce contact (1 000 FCFA)</span>
                               </button>
                             </div>
                           </div>
@@ -880,41 +789,30 @@ export const ClientView: React.FC<ClientViewProps> = ({
               Prestataire : <strong>{unlockModalProvider.singleName}</strong> ({unlockModalProvider.serviceOffered})
             </p>
 
-            {hasAccess ? (
-              <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-800 text-xs font-bold mb-4 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>
-                  {isSubActive
-                    ? 'Déblocage illimité inclus dans votre abonnement client actif !'
-                    : 'Ce déblocage est 100% GRATUIT grâce à votre semaine offerte !'}
-                </span>
+            <div className="space-y-3 mb-4">
+              <div className="p-3 bg-brand-50 rounded-2xl border border-brand-200 text-brand-900 text-xs">
+                <p className="font-bold">📱 Déblocage du contact prestataire</p>
+                <p className="text-[11px] text-brand-800 mt-0.5">
+                  Accédez instantanément au numéro d'appel direct et au WhatsApp du professionnel en validant le paiement unitaire.
+                </p>
               </div>
-            ) : (
-              <div className="space-y-3 mb-4">
-                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs">
-                  <p className="font-bold">⚠️ Votre semaine gratuite de 7 jours est expirée.</p>
-                  <p className="text-[11px] text-amber-800 mt-0.5">
-                    Réglez les frais de mise en contact unitaire pour afficher le numéro direct et WhatsApp.
-                  </p>
-                </div>
-                <div className="flex items-center justify-between text-xs font-bold p-2.5 bg-slate-50 rounded-xl">
-                  <span>Frais de mise en relation :</span>
-                  <span className="text-brand-600 font-black">1 000 FCFA</span>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Numéro Mobile Money (Optionnel pour préremplissage)
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="Ex: 0700000000"
-                    value={momoPhone}
-                    onChange={(e) => setMomoPhone(e.target.value)}
-                    className="w-full min-h-[42px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
-                  />
-                </div>
+              <div className="flex items-center justify-between text-xs font-bold p-2.5 bg-slate-50 rounded-xl">
+                <span>Frais de mise en relation :</span>
+                <span className="text-brand-600 font-black">1 000 FCFA</span>
               </div>
-            )}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Numéro Mobile Money (Optionnel pour préremplissage)
+                </label>
+                <input
+                  type="tel"
+                  placeholder="Ex: 0700000000"
+                  value={momoPhone}
+                  onChange={(e) => setMomoPhone(e.target.value)}
+                  className="w-full min-h-[42px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
+                />
+              </div>
+            </div>
 
             <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 pt-2 border-t border-slate-100">
               <button
@@ -929,7 +827,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
                 onClick={handleConfirmUnlock}
                 className="inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition flex-1"
               >
-                {hasAccess ? 'Débloquer Gratuitement' : 'Payer 1 000 FCFA (SasPay)'}
+                Payer 1 000 FCFA (SasPay)
               </button>
             </div>
           </div>

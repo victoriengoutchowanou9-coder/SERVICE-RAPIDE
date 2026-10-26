@@ -181,7 +181,7 @@ module.exports = async (req, res) => {
         $11,
         $12,
         true,
-        ${role === 'CLIENT' ? "NOW() + INTERVAL '7 days'" : "NULL"},
+        NULL,
         NOW(),
         NOW()
       )

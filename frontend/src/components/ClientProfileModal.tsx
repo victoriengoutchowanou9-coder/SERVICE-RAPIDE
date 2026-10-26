@@ -36,16 +36,7 @@ export const ClientProfileModal: React.FC<ClientProfileModalProps> = ({
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
   const [payments, setPayments] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'DETAILS' | 'SUBSCRIPTION'>('DETAILS');
-
-  // Calcul du statut de l'abonnement et de l'essai
-  const trialExpires = user?.clientTrialExpiresAt ? new Date(user.clientTrialExpiresAt) : null;
-  const isTrialActive = trialExpires ? trialExpires > new Date() : false;
-
-  const subExpires = user?.clientSubscriptionExpiresAt ? new Date(user.clientSubscriptionExpiresAt) : null;
-  const isSubActive = subExpires ? subExpires > new Date() : false;
-
-  const hasAccess = isTrialActive || isSubActive;
+  const [activeTab, setActiveTab] = useState<'DETAILS' | 'PAYMENTS'>('DETAILS');
 
   useEffect(() => {
     if (user?.id) {
@@ -132,75 +123,36 @@ export const ClientProfileModal: React.FC<ClientProfileModalProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('SUBSCRIPTION')}
+            onClick={() => setActiveTab('PAYMENTS')}
             className={`py-2 px-3 text-xs font-black rounded-xl transition flex items-center justify-center gap-1.5 ${
-              activeTab === 'SUBSCRIPTION'
+              activeTab === 'PAYMENTS'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <span>Abonnement</span>
-            <span
-              className={`w-2 h-2 rounded-full ${
-                hasAccess ? 'bg-emerald-500' : 'bg-rose-500'
-              }`}
-            />
+            <span>Mes Déblocages & Paiements</span>
           </button>
         </div>
 
-        {/* CONTENU ONGLET ABONNEMENT */}
-        {activeTab === 'SUBSCRIPTION' && (
+        {/* CONTENU ONGLET DÉBLOCAGES & PAIEMENTS */}
+        {activeTab === 'PAYMENTS' && (
           <div className="space-y-4">
-            <div
-              className={`p-4 rounded-2xl border flex flex-col gap-2 ${
-                hasAccess
-                  ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
-                  : 'bg-rose-50/70 border-rose-200 text-rose-950'
-              }`}
-            >
-              <div className="flex items-center gap-2 font-black text-xs sm:text-sm">
-                {hasAccess ? (
-                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                )}
-                <span>
-                  {hasAccess
-                    ? isSubActive
-                      ? 'Abonnement Client Actif'
-                      : 'Semaine Gratuite Active'
-                    : 'Période Gratuite Expirée'}
-                </span>
+            <div className="p-4 rounded-2xl border border-slate-200 bg-emerald-50/70 text-slate-900 flex flex-col gap-2">
+              <div className="flex items-center gap-2 font-black text-xs sm:text-sm text-emerald-950">
+                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Formule Client à l'Acte (Sans Abonnement)</span>
               </div>
-              <p className="text-[11px] leading-relaxed">
-                {hasAccess
-                  ? isSubActive
-                    ? `Votre abonnement est valide jusqu'au ${subExpires?.toLocaleDateString('fr-FR')}. Vous pouvez contacter tous les prestataires.`
-                    : `Votre essai offert de 7 jours est en cours jusqu'au ${trialExpires?.toLocaleDateString('fr-FR')}.`
-                  : "Votre essai de 7 jours a pris fin. Pour débloquer les coordonnées directes des prestataires, veuillez souscrire à l'abonnement."}
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                En tant que client, vous n'avez aucun abonnement ni prélèvement périodique. Vous payez uniquement 1 000 FCFA à la demande pour débloquer le numéro de téléphone et le WhatsApp du prestataire dont vous avez besoin.
               </p>
             </div>
-
-            {!hasAccess && onOpenSubscribe && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenSubscribe();
-                }}
-                className="w-full inline-flex items-center justify-center min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white shadow-lg shadow-brand-500/25 transition gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Débloquer les contacts (S'abonner)</span>
-              </button>
-            )}
 
             {/* HISTORIQUE PAIEMENTS */}
             <div>
               <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2">
-                Historique des Transactions
+                Historique des Déblocages de Contacts
               </h4>
-              <div className="max-h-40 overflow-y-auto space-y-2">
+              <div className="max-h-48 overflow-y-auto space-y-2">
                 {payments.length > 0 ? (
                   payments.map((p) => (
                     <div
@@ -208,19 +160,21 @@ export const ClientProfileModal: React.FC<ClientProfileModalProps> = ({
                       className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs"
                     >
                       <div>
-                        <p className="font-bold text-slate-800">{p.type}</p>
+                        <p className="font-bold text-slate-800">
+                          {p.type === 'CONTACT_UNLOCK' ? 'Déblocage contact prestataire' : p.type}
+                        </p>
                         <p className="text-[10px] text-slate-400">
-                          {new Date(p.createdAt).toLocaleDateString('fr-FR')} • {p.method}
+                          {new Date(p.createdAt).toLocaleDateString('fr-FR')} • {p.method || 'SasPay Mobile Money'}
                         </p>
                       </div>
                       <span className="font-black text-brand-600">
-                        {p.amount?.toLocaleString('fr-FR')} FCFA
+                        {p.amount ? p.amount.toLocaleString('fr-FR') : '1 000'} FCFA
                       </span>
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-slate-400 italic py-2 text-center">
-                    Aucun paiement enregistré pour l'instant.
+                  <p className="text-xs text-slate-400 italic py-3 text-center">
+                    Aucun déblocage de contact enregistré pour l'instant.
                   </p>
                 )}
               </div>

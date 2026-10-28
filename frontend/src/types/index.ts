@@ -48,14 +48,24 @@ export interface ReviewItem {
   date: string;
 }
 
+export interface PricingTier {
+  id: string;
+  name: string;
+  price: number;
+  unit?: string;
+}
+
 export interface ProviderItem {
   id: string;
   singleName: string;
   photoUrl?: string; // Photo de profil du prestataire
+  portfolioPhotos?: string[]; // Galerie de photos de ses réalisations
   serviceOffered: string;
   skills?: string[]; // Compétences détaillées
   city: string;
   department: string;
+  commune?: string;
+  country?: string;
   interventionZones?: string[]; // Zones d'intervention précises
   availability: 'AVAILABLE' | 'BUSY';
   isOnline?: boolean;
@@ -65,6 +75,9 @@ export interface ProviderItem {
   // Tarif estimé
   basePrice: number;
   pricingUnit: string;
+  hourlyRate?: number | null; // Tarif à l'heure
+  dailyRate?: number | null; // Tarif à la journée
+  pricingTiers?: PricingTier[]; // Tarifs sur mesure / prestations diverses
   // Réputation & Activité
   rating: number; // Ex: 4.9
   reviewsCount: number;

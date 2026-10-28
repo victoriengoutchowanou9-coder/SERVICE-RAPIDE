@@ -27,10 +27,15 @@ import {
   AlertCircle,
   LogOut,
   User,
+  Image as ImageIcon,
+  Plus,
+  Trash2,
+  Layers,
+  DollarSign,
 } from 'lucide-react';
 import { FeedPosts } from './FeedPosts';
 import { AdsSection } from './AdsSection';
-import { PostItem, ServiceRequest, ReviewItem } from '../types';
+import { PostItem, ServiceRequest, ReviewItem, PricingTier } from '../types';
 import { supabaseBackend } from '../config/supabase';
 import { saspayClient } from '../config/saspay';
 import { GeoCascadeSelect } from './GeoCascadeSelect';
@@ -58,31 +63,39 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   onLogout,
   activeSectionOverride,
 }) => {
-  const [profile, setProfile] = useState<any>(
-    user.providerProfile || {
-      id: user?.id || 'prov-user',
-      singleName: user?.firstName || 'Professionnel',
-      fullName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Professionnel',
-      photoUrl: user?.avatarUrl || '',
-      serviceOffered: 'Services Spécialisés',
-      skills: [],
-      city: user?.city || 'Abidjan',
-      department: user?.department || 'Centre',
-      interventionZones: [],
-      availability: 'AVAILABLE',
-      receivesOnSite: true,
-      travelRequired: false,
-      travelFee: 0,
-      basePrice: 5000,
-      pricingUnit: 'par prestation',
-      whatsappNumber: user?.phoneNumber || '',
-      directPhoneNumber: user?.phoneNumber || '',
-      rating: 0,
-      reviewsCount: 0,
-      completedMissions: 0,
-      subscriptionExpiresAt: user?.providerProfile?.subscriptionExpiresAt || new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
-    }
-  );
+  const [profile, setProfile] = useState<any>(() => {
+    const p = user?.providerProfile || {};
+    return {
+      id: p.id || user?.id || 'prov-user',
+      singleName: p.singleName || user?.firstName || 'Professionnel',
+      fullName: p.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Professionnel',
+      photoUrl: p.photoUrl || user?.avatarUrl || '',
+      serviceOffered: p.serviceOffered || 'Services Spécialisés',
+      skills: Array.isArray(p.skills) ? p.skills : [],
+      city: p.city || user?.city || 'Abidjan',
+      department: p.department || user?.department || 'Centre',
+      commune: p.commune || user?.commune || '',
+      country: p.country || user?.country || 'Bénin',
+      countryCode: p.countryCode || user?.countryCode || 'BJ',
+      interventionZones: Array.isArray(p.interventionZones) ? p.interventionZones : [],
+      availability: p.availability || 'AVAILABLE',
+      receivesOnSite: p.receivesOnSite !== undefined ? p.receivesOnSite : true,
+      travelRequired: p.travelRequired !== undefined ? p.travelRequired : false,
+      travelFee: p.travelFee || 0,
+      basePrice: p.basePrice || 5000,
+      pricingUnit: p.pricingUnit || 'par prestation',
+      hourlyRate: p.hourlyRate ?? '',
+      dailyRate: p.dailyRate ?? '',
+      pricingTiers: Array.isArray(p.pricingTiers) ? p.pricingTiers : [],
+      portfolioPhotos: Array.isArray(p.portfolioPhotos) ? p.portfolioPhotos : [],
+      whatsappNumber: p.whatsappNumber || user?.phoneNumber || '',
+      directPhoneNumber: p.directPhoneNumber || user?.phoneNumber || '',
+      rating: p.rating || 0,
+      reviewsCount: p.reviewsCount || 0,
+      completedMissions: p.completedMissions || 0,
+      subscriptionExpiresAt: p.subscriptionExpiresAt || new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+    };
+  });
 
   const [activeSubTab, setActiveSubTab] = useState<'MISSIONS' | 'PROFILE' | 'BILLING' | 'FEED' | 'ADS'>('MISSIONS');
 
@@ -108,6 +121,26 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   // Nouveaux tags de compétences et zones
   const [newSkillInput, setNewSkillInput] = useState('');
   const [newZoneInput, setNewZoneInput] = useState('');
+
+  // Nouveaux états : portfolio photos & tarifs personnalisés
+  const [newPortfolioUrl, setNewPortfolioUrl] = useState('');
+  const [newTierName, setNewTierName] = useState('');
+  const [newTierPrice, setNewTierPrice] = useState<number | ''>('');
+  const [newTierUnit, setNewTierUnit] = useState('par prestation');
+
+  // Synchronisation du profil si mis à jour dans le parent
+  useEffect(() => {
+    if (user?.providerProfile) {
+      setProfile((prev: any) => ({
+        ...prev,
+        ...user.providerProfile,
+        skills: Array.isArray(user.providerProfile.skills) ? user.providerProfile.skills : prev.skills,
+        interventionZones: Array.isArray(user.providerProfile.interventionZones) ? user.providerProfile.interventionZones : prev.interventionZones,
+        portfolioPhotos: Array.isArray(user.providerProfile.portfolioPhotos) ? user.providerProfile.portfolioPhotos : prev.portfolioPhotos,
+        pricingTiers: Array.isArray(user.providerProfile.pricingTiers) ? user.providerProfile.pricingTiers : prev.pricingTiers,
+      }));
+    }
+  }, [user?.providerProfile]);
 
   // Récupérer l'historique réel des paiements
   useEffect(() => {
@@ -277,6 +310,84 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  // Gestion du téléversement de plusieurs photos de réalisations (Portfolio)
+  const handlePortfolioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const fileArray = Array.from(files);
+    let loadedCount = 0;
+    const newPhotos: string[] = [];
+
+    fileArray.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          newPhotos.push(reader.result);
+        }
+        loadedCount++;
+        if (loadedCount === fileArray.length) {
+          setProfile((prev: any) => ({
+            ...prev,
+            portfolioPhotos: [...(prev.portfolioPhotos || []), ...newPhotos],
+          }));
+          setSuccessMsg(`${newPhotos.length} photo(s) ajoutée(s) à votre galerie !`);
+          setTimeout(() => setSuccessMsg(null), 3000);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  const handleAddPortfolioUrl = () => {
+    if (!newPortfolioUrl.trim()) return;
+    setProfile((prev: any) => ({
+      ...prev,
+      portfolioPhotos: [...(prev.portfolioPhotos || []), newPortfolioUrl.trim()],
+    }));
+    setNewPortfolioUrl('');
+    setSuccessMsg('Photo ajoutée à la galerie !');
+    setTimeout(() => setSuccessMsg(null), 3000);
+  };
+
+  const handleRemovePortfolioPhoto = (indexToRemove: number) => {
+    setProfile((prev: any) => ({
+      ...prev,
+      portfolioPhotos: (prev.portfolioPhotos || []).filter((_: any, idx: number) => idx !== indexToRemove),
+    }));
+  };
+
+  // Ajout / Suppression de prestation tarifaire personnalisée
+  const handleAddPricingTier = () => {
+    if (!newTierName.trim() || newTierPrice === '' || Number(newTierPrice) <= 0) {
+      setSuccessMsg('Veuillez renseigner le libellé de la prestation et un montant valide.');
+      setTimeout(() => setSuccessMsg(null), 3000);
+      return;
+    }
+    const newTier: PricingTier = {
+      id: 'tier-' + Date.now(),
+      name: newTierName.trim(),
+      price: Number(newTierPrice),
+      unit: newTierUnit || 'par prestation',
+    };
+    setProfile((prev: any) => ({
+      ...prev,
+      pricingTiers: [...(prev.pricingTiers || []), newTier],
+    }));
+    setNewTierName('');
+    setNewTierPrice('');
+    setNewTierUnit('par prestation');
+    setSuccessMsg('Prestation ajoutée à vos tarifs !');
+    setTimeout(() => setSuccessMsg(null), 2500);
+  };
+
+  const handleRemovePricingTier = (tierId: string) => {
+    setProfile((prev: any) => ({
+      ...prev,
+      pricingTiers: (prev.pricingTiers || []).filter((t: any) => t.id !== tierId),
+    }));
   };
 
   const handlePaySubscription = async () => {
@@ -703,6 +814,100 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
             </div>
           </div>
 
+          {/* SECTION GALERIE DE RÉALISATIONS (Plusieurs photos) */}
+          <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <div>
+                <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-brand-600" />
+                  <span>Galerie de Réalisations & Photos de mes Travaux</span>
+                  <span className="text-[10px] font-bold bg-brand-100 text-brand-800 px-2 py-0.5 rounded-full ml-1">
+                    {(profile.portfolioPhotos || []).length} photo{(profile.portfolioPhotos || []).length > 1 ? 's' : ''}
+                  </span>
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Ajoutez plusieurs photos de vos réalisations, de vos chantiers ou de votre espace. Les clients pourront les consulter et zoomer dessus.
+                </p>
+              </div>
+            </div>
+
+            {/* Boutons d'ajout */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                id="prov-portfolio-upload"
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handlePortfolioUpload}
+                className="hidden"
+              />
+              <label
+                htmlFor="prov-portfolio-upload"
+                className="cursor-pointer inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-50 shadow-xs transition"
+              >
+                <Upload className="w-3.5 h-3.5 text-brand-600" />
+                <span>Ajouter des photos (depuis l'appareil)</span>
+              </label>
+
+              <div className="flex-1 flex gap-2">
+                <input
+                  type="url"
+                  placeholder="Ou collez l'URL d'une image de réalisation"
+                  value={newPortfolioUrl}
+                  onChange={(e) => setNewPortfolioUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddPortfolioUrl();
+                    }
+                  }}
+                  className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium focus:ring-2 focus:ring-brand-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddPortfolioUrl}
+                  disabled={!newPortfolioUrl.trim()}
+                  className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Ajouter</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Grille des photos enregistrées */}
+            {(profile.portfolioPhotos || []).length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 pt-2">
+                {(profile.portfolioPhotos || []).map((imgUrl: string, idx: number) => (
+                  <div key={idx} className="relative group rounded-xl overflow-hidden aspect-square border border-slate-200 bg-slate-100 shadow-xs">
+                    <img
+                      src={imgUrl}
+                      alt={`Réalisation ${idx + 1}`}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePortfolioPhoto(idx)}
+                        className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center hover:bg-rose-700 shadow-md transition"
+                        title="Supprimer cette photo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
+                      #{idx + 1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4 border-2 border-dashed border-slate-200 rounded-xl bg-white/50 text-[11px] text-slate-400">
+                Aucune photo de réalisation enregistrée. Téléversez vos meilleures images ci-dessus !
+              </div>
+            )}
+          </div>
+
           {/* Noms */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -876,22 +1081,23 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
             </div>
           </div>
 
-          {/* DÉFINITION DES TARIFS */}
-          <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200 space-y-2">
+          {/* DÉFINITION DES TARIFS (Forfait, Par Heure, Par Journée & Prestations spécifiques) */}
+          <div className="p-4 sm:p-5 bg-emerald-50/70 rounded-2xl border border-emerald-200 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                  <span className="text-base">💰</span> Définition de mes Tarifs
+                <h4 className="text-xs sm:text-sm font-black text-emerald-950 flex items-center gap-1.5">
+                  <span className="text-base">💰</span> Tarification & Grille de Prestations
                 </h4>
                 <p className="text-[11px] text-emerald-800">
-                  Ce montant estimé est affiché de façon transparente au client avant réservation.
+                  Indiquez vos prix pour donner une vue transparente aux clients : tarif de base, prix par heure, par journée ou prestations sur mesure.
                 </p>
               </div>
-              <span className="text-[10px] font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full">
-                Affiché aux clients
+              <span className="text-[10px] font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full shrink-0">
+                Visible par les clients
               </span>
             </div>
 
+            {/* Grille principale : Tarif de base + Formule */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
@@ -911,7 +1117,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Formule ou Unité
+                  Formule ou Unité de base
                 </label>
                 <select
                   value={profile.pricingUnit || 'par prestation'}
@@ -919,94 +1125,258 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                   className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-brand-500"
                 >
                   <option value="par prestation">Par prestation (forfait)</option>
-                  <option value="par climatiseur">Par climatiseur</option>
                   <option value="par heure">Par heure</option>
                   <option value="par jour">Par jour / journée</option>
                   <option value="à partir de (sur devis)">À partir de (selon diagnostic)</option>
+                  <option value="par appareil">Par appareil / unité</option>
                   <option value="par mètre carré">Par mètre carré (m²)</option>
                 </select>
               </div>
             </div>
-          </div>
 
-          {/* Modalités Atelier & Déplacement */}
-          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Building className="w-4 h-4 text-slate-600" />
-                <div>
-                  <p className="text-xs font-bold text-slate-800">Reçoit sur place (Atelier / Local)</p>
-                  <p className="text-[11px] text-slate-500">Le client peut-il se déplacer chez vous ?</p>
-                </div>
+            {/* Grille secondaire : Tarif par Heure & Tarif par Journée */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-emerald-200/70">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  ⏱️ Tarif par Heure (FCFA) <span className="text-[10px] font-normal text-slate-500">(Optionnel)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="500"
+                  value={profile.hourlyRate ?? ''}
+                  onChange={(e) => setProfile({ ...profile, hourlyRate: e.target.value === '' ? null : parseFloat(e.target.value) })}
+                  className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-brand-500"
+                  placeholder="Ex: 2500 FCFA / heure"
+                />
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setProfile({ ...profile, receivesOnSite: true })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                    profile.receivesOnSite ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 border'
-                  }`}
-                >
-                  Oui
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setProfile({ ...profile, receivesOnSite: false })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                    !profile.receivesOnSite ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border'
-                  }`}
-                >
-                  Non
-                </button>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  📅 Tarif par Journée (FCFA) <span className="text-[10px] font-normal text-slate-500">(Optionnel)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="500"
+                  value={profile.dailyRate ?? ''}
+                  onChange={(e) => setProfile({ ...profile, dailyRate: e.target.value === '' ? null : parseFloat(e.target.value) })}
+                  className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-brand-500"
+                  placeholder="Ex: 15000 FCFA / jour"
+                />
               </div>
             </div>
 
-            <div className="border-t border-slate-200 pt-3">
+            {/* Sous-section : Prestations spécifiques à la carte */}
+            <div className="pt-2 border-t border-emerald-200/70 space-y-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-slate-600" />
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Déplacement chez le client</p>
-                    <p className="text-[11px] text-slate-500">Pouvez-vous intervenir au domicile du client ?</p>
+                <label className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Prestations & Formules à la carte (Peu importe vos tarifs sur mesure)</span>
+                </label>
+                <span className="text-[10px] text-emerald-700">Facultatif</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                <div className="sm:col-span-5">
+                  <input
+                    type="text"
+                    placeholder="Nom prestation (ex: Pose split complet)"
+                    value={newTierName}
+                    onChange={(e) => setNewTierName(e.target.value)}
+                    className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <input
+                    type="number"
+                    min="500"
+                    step="500"
+                    placeholder="Prix (FCFA)"
+                    value={newTierPrice}
+                    onChange={(e) => setNewTierPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                    className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-1.5 text-xs font-medium focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <select
+                    value={newTierUnit}
+                    onChange={(e) => setNewTierUnit(e.target.value)}
+                    className="w-full bg-white border border-emerald-300 rounded-xl px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="par prestation">Par prestation</option>
+                    <option value="par heure">Par heure</option>
+                    <option value="par jour">Par jour</option>
+                    <option value="par unité">Par unité</option>
+                    <option value="par m²">Par m²</option>
+                    <option value="sur devis">Sur devis</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-1">
+                  <button
+                    type="button"
+                    onClick={handleAddPricingTier}
+                    className="w-full h-full min-h-[34px] bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center justify-center transition"
+                    title="Ajouter cette formule"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Liste des formules ajoutées */}
+              {(profile.pricingTiers || []).length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {(profile.pricingTiers || []).map((tier: PricingTier) => (
+                    <span
+                      key={tier.id}
+                      className="inline-flex items-center gap-2 bg-white text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-300 shadow-2xs"
+                    >
+                      <span>{tier.name}</span>
+                      <span className="text-emerald-700 font-black">
+                        {tier.price.toLocaleString('fr-FR')} FCFA
+                      </span>
+                      {tier.unit && (
+                        <span className="text-[10px] text-slate-500 font-normal">({tier.unit})</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePricingTier(tier.id)}
+                        className="text-slate-400 hover:text-rose-600 ml-1 font-black transition"
+                        title="Supprimer cette formule"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* MODALITÉS D'INTERVENTION & DÉPLACEMENT (Atelier vs Déplacement client) */}
+          <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-4">
+            <div>
+              <h4 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+                <Truck className="w-4 h-4 text-brand-600" />
+                <span>Modalités de Réception & Déplacement</span>
+              </h4>
+              <p className="text-[11px] text-slate-500">
+                Précisez clairement aux clients si vous intervenez à domicile, si vous les accueillez dans votre atelier/bureau, et les éventuels frais de déplacement.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Option 1 : Accueil à l'atelier / Le client peut venir */}
+              <div className={`p-4 rounded-2xl border transition ${profile.receivesOnSite ? 'bg-white border-emerald-400 shadow-xs ring-1 ring-emerald-400/20' : 'bg-slate-100/70 border-slate-200'}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${profile.receivesOnSite ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
+                      <Building className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Le client peut venir chez vous</p>
+                      <p className="text-[10px] text-slate-500">Réception à votre atelier, cabinet ou bureau</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
+
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setProfile({ ...profile, receivesOnSite: true })}
+                    className={`py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
+                      profile.receivesOnSite
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                    }`}
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Oui, le client peut venir</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProfile({ ...profile, receivesOnSite: false })}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                      !profile.receivesOnSite
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                    }`}
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Non, pas d'accueil sur place</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Option 2 : Déplacement chez le client */}
+              <div className={`p-4 rounded-2xl border transition ${profile.travelRequired ? 'bg-white border-emerald-400 shadow-xs ring-1 ring-emerald-400/20' : 'bg-slate-100/70 border-slate-200'}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${profile.travelRequired ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
+                      <Truck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Vous vous déplacez chez le client</p>
+                      <p className="text-[10px] text-slate-500">Intervention à domicile ou sur le site du client</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mt-3">
                   <button
                     type="button"
                     onClick={() => setProfile({ ...profile, travelRequired: true })}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                      profile.travelRequired ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 border'
+                    className={`py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
+                      profile.travelRequired
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                     }`}
                   >
-                    Oui
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Oui, je me déplace</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setProfile({ ...profile, travelRequired: false })}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                      !profile.travelRequired ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border'
+                    className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                      !profile.travelRequired
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                     }`}
                   >
-                    Non
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Non, pas de déplacement</span>
                   </button>
                 </div>
-              </div>
 
-              {profile.travelRequired && (
-                <div className="mt-3 pl-6">
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Frais de déplacement (FCFA)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="500"
-                    value={profile.travelFee || 0}
-                    onChange={(e) => setProfile({ ...profile, travelFee: parseFloat(e.target.value) || 0 })}
-                    className="w-44 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-              )}
+                {/* Frais de déplacement si déplacement activé */}
+                {profile.travelRequired && (
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <label className="block text-[11px] font-black text-slate-800">
+                          Frais de déplacement (FCFA)
+                        </label>
+                        <span className="text-[10px] text-slate-500">
+                          Mettez 0 si le déplacement est gratuit / inclus
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min="0"
+                          step="500"
+                          value={profile.travelFee || 0}
+                          onChange={(e) => setProfile({ ...profile, travelFee: parseFloat(e.target.value) || 0 })}
+                          className="w-36 bg-white border border-emerald-300 rounded-xl px-3 py-1.5 text-xs font-black text-slate-900 focus:ring-2 focus:ring-brand-500"
+                        />
+                        <span className="text-xs font-bold text-slate-600">FCFA</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

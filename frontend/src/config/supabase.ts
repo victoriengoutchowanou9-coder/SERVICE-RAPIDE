@@ -496,6 +496,7 @@ export const supabaseBackend = {
           city: profile?.city || '',
           preferredLanguage: profile?.preferredLanguage || 'fr',
           avatarUrl: profile?.avatarUrl || '',
+          birthDate: profile?.birthDate || '',
           phoneNumber: profile?.phoneNumber || '',
           clientTrialExpiresAt: profile?.clientTrialExpiresAt,
           clientSubscriptionExpiresAt: profile?.clientSubscriptionExpiresAt,
@@ -606,11 +607,15 @@ export const supabaseBackend = {
         city: profileData.city,
         department: profileData.department,
         commune: profileData.commune,
-        receivesOnSite: profileData.receivesOnSite,
-        travelRequired: profileData.travelRequired,
-        travelFee: profileData.travelFee,
-        basePrice: profileData.basePrice,
-        pricingUnit: profileData.pricingUnit,
+        receivesOnSite: Boolean(profileData.receivesOnSite),
+        travelRequired: Boolean(profileData.travelRequired),
+        travelFee: profileData.travelFee || 0,
+        basePrice: profileData.basePrice || 5000,
+        pricingUnit: profileData.pricingUnit || 'PRESTATION',
+        hourlyRate: profileData.hourlyRate || null,
+        dailyRate: profileData.dailyRate || null,
+        pricingTiers: profileData.pricingTiers || [],
+        portfolioPhotos: profileData.portfolioPhotos || [],
         whatsappNumber: profileData.whatsappNumber,
         directPhoneNumber: profileData.directPhoneNumber,
         photoUrl: profileData.photoUrl,
@@ -629,6 +634,7 @@ export const supabaseBackend = {
       lastName?: string;
       phoneNumber?: string;
       avatarUrl?: string;
+      birthDate?: string;
       country?: string;
       countryCode?: string;
       department?: string;
@@ -644,6 +650,7 @@ export const supabaseBackend = {
         lastName: data.lastName,
         phoneNumber: data.phoneNumber,
         avatarUrl: data.avatarUrl,
+        birthDate: data.birthDate || null,
         country: data.country,
         countryCode: data.countryCode,
         department: data.department,
@@ -652,6 +659,29 @@ export const supabaseBackend = {
         updatedAt: new Date().toISOString(),
       })
       .eq('id', userId);
+  },
+
+  /**
+   * Récupération publique des prestataires enregistrés
+   */
+  async getPublicProviders(token?: string) {
+    try {
+      const headers: Record<string, string> = {};
+      const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('sr_token') : '');
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      const res = await fetch('/api/providers/list', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      }
+    } catch (e) {
+      console.warn('Erreur API providers/list:', e);
+    }
+    return [];
   },
 
   /**

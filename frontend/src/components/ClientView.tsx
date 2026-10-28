@@ -25,12 +25,14 @@ import {
   ListFilter,
   ArrowUpDown,
   LogOut,
+  Eye,
 } from 'lucide-react';
 import { ProviderItem, PostItem, ServiceRequest } from '../types';
 import { AdsSection } from './AdsSection';
 import { FeedPosts } from './FeedPosts';
 import { ClientProfileModal } from './ClientProfileModal';
 import { SupportModal } from './SupportModal';
+import { ProviderDetailModal } from './ProviderDetailModal';
 import { saspayClient } from '../config/saspay';
 import { supabaseBackend } from '../config/supabase';
 
@@ -81,6 +83,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
   }, [activeSectionOverride]);
 
   // Modales d'action
+  const [selectedDetailProvider, setSelectedDetailProvider] = useState<ProviderItem | null>(null);
   const [unlockModalProvider, setUnlockModalProvider] = useState<ProviderItem | null>(null);
   const [refundModalItem, setRefundModalItem] = useState<ProviderItem | null>(null);
   const [refundReason, setRefundReason] = useState('');
@@ -101,9 +104,24 @@ export const ClientView: React.FC<ClientViewProps> = ({
   const defaultMockProviders: ProviderItem[] = [];
 
   const [internalProviders, setInternalProviders] = useState<ProviderItem[]>(defaultMockProviders);
-  const currentProviders = externalProviders || internalProviders;
+  const currentProviders = (externalProviders && externalProviders.length > 0) ? externalProviders : internalProviders;
 
   const [internalRequests, setInternalRequests] = useState<ServiceRequest[]>([]);
+
+  // 1. Chargement des prestataires enregistrés depuis l'API pour être visibles par tous les clients
+  useEffect(() => {
+    const fetchRegisteredProviders = async () => {
+      try {
+        const provs = await supabaseBackend.getPublicProviders(token);
+        if (provs && provs.length > 0) {
+          setInternalProviders(provs);
+        }
+      } catch (e) {
+        console.warn('Erreur chargement prestataires:', e);
+      }
+    };
+    fetchRegisteredProviders();
+  }, [token]);
 
   useEffect(() => {
     if (user?.id) {
@@ -442,21 +460,29 @@ export const ClientView: React.FC<ClientViewProps> = ({
                     {/* EN-TÊTE : Photo + Un seul nom + Disponibilité en direct */}
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="relative shrink-0">
+                        <div
+                          className="relative shrink-0 cursor-pointer group"
+                          onClick={() => setSelectedDetailProvider(item)}
+                          title="Cliquez pour voir le profil complet et les photos"
+                        >
                           <img
                             src={
                               item.photoUrl ||
                               'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'
                             }
                             alt={item.singleName}
-                            className="w-14 h-14 rounded-2xl object-cover ring-2 ring-slate-100 shadow-xs"
+                            className="w-14 h-14 rounded-2xl object-cover ring-2 ring-slate-100 shadow-xs group-hover:ring-brand-500 transition"
                           />
                         </div>
 
-                        <div>
+                        <div
+                          className="cursor-pointer"
+                          onClick={() => setSelectedDetailProvider(item)}
+                          title="Cliquez pour voir le profil complet et les photos"
+                        >
                           <div className="flex items-center gap-2">
                             {/* RÈGLE STRICTE : Un seul nom visible avant déblocage */}
-                            <h4 className="text-sm font-black text-slate-900">
+                            <h4 className="text-sm font-black text-slate-900 hover:text-brand-600 transition">
                               {isUnlocked && item.contact.fullName ? item.contact.fullName : item.singleName}
                             </h4>
                           </div>
@@ -547,6 +573,16 @@ export const ClientView: React.FC<ClientViewProps> = ({
                         </span>
                       </span>
                     </div>
+
+                    {/* BOUTON VOIR LE PROFIL & PHOTOS */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDetailProvider(item)}
+                      className="w-full inline-flex items-center justify-center gap-2 min-h-[38px] px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition mb-1 shadow-2xs"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-brand-600" />
+                      <span>Consulter le profil & photos ({item.portfolioPhotos?.length || 0})</span>
+                    </button>
                   </div>
 
                   {/* ZONE CONTACT (DÉBLOQUÉ / BLOQUÉ) - BOUTONS UNIFORMISÉS ET ALIGNÉS */}
@@ -880,6 +916,26 @@ export const ClientView: React.FC<ClientViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Détails & Photos Prestataire (Consultable par le client, coordonnées masquées avant paiement) */}
+      {selectedDetailProvider && (
+        <ProviderDetailModal
+          provider={selectedDetailProvider}
+          isUnlocked={Boolean(
+            selectedDetailProvider.isContactUnlocked ||
+            unlockedProviderIds.includes(selectedDetailProvider.id)
+          )}
+          onClose={() => setSelectedDetailProvider(null)}
+          onUnlock={(p) => {
+            setSelectedDetailProvider(null);
+            setUnlockModalProvider(p);
+          }}
+          onReportIssue={(p) => {
+            setSelectedDetailProvider(null);
+            setRefundModalItem(p);
+          }}
+        />
       )}
     </div>
   );

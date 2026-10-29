@@ -1,14 +1,4 @@
-let pg;
-try {
-  pg = require('pg');
-} catch (e) {
-  try {
-    pg = require('../../backend/node_modules/pg');
-  } catch (e2) {
-    pg = require('../backend/node_modules/pg');
-  }
-}
-const { Client } = pg;
+const { Client } = require('pg');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');

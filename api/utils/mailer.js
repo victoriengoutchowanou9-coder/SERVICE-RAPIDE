@@ -165,7 +165,12 @@ async function sendPasswordResetEmail(toEmail, code) {
   }
 }
 
-module.exports = {
-  sendConfirmationEmail,
-  sendPasswordResetEmail,
-};
+function defaultHandler(req, res) {
+  res.status(404).json({ error: 'Fichier utilitaire interne.' });
+}
+defaultHandler.sendConfirmationEmail = sendConfirmationEmail;
+defaultHandler.sendPasswordResetEmail = sendPasswordResetEmail;
+
+module.exports = defaultHandler;
+module.exports.sendConfirmationEmail = sendConfirmationEmail;
+module.exports.sendPasswordResetEmail = sendPasswordResetEmail;

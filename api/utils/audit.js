@@ -1,14 +1,4 @@
-let pg;
-try {
-  pg = require('pg');
-} catch (e) {
-  try {
-    pg = require('../../backend/node_modules/pg');
-  } catch (e2) {
-    pg = require('../backend/node_modules/pg');
-  }
-}
-const { Client } = pg;
+const { Client } = require('pg');
 
 function getDbClient() {
   return new Client({
@@ -93,7 +83,12 @@ async function recordAuditLog(event) {
   }
 }
 
-module.exports = {
-  recordAuditLog,
-  getDbClient,
-};
+function defaultHandler(req, res) {
+  res.status(404).json({ error: 'Fichier utilitaire interne.' });
+}
+defaultHandler.recordAuditLog = recordAuditLog;
+defaultHandler.getDbClient = getDbClient;
+
+module.exports = defaultHandler;
+module.exports.recordAuditLog = recordAuditLog;
+module.exports.getDbClient = getDbClient;

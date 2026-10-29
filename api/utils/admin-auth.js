@@ -58,7 +58,12 @@ function requireAdminAuth(req, res) {
   return { authorized: false };
 }
 
-module.exports = {
-  requireAdminAuth,
-  decodeAndVerifyJwt,
-};
+function defaultHandler(req, res) {
+  res.status(404).json({ error: 'Fichier utilitaire interne.' });
+}
+defaultHandler.requireAdminAuth = requireAdminAuth;
+defaultHandler.decodeAndVerifyJwt = decodeAndVerifyJwt;
+
+module.exports = defaultHandler;
+module.exports.requireAdminAuth = requireAdminAuth;
+module.exports.decodeAndVerifyJwt = decodeAndVerifyJwt;

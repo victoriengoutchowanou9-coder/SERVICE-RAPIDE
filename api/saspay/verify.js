@@ -1,15 +1,5 @@
 const https = require('https');
-let pg;
-try {
-  pg = require('pg');
-} catch (e) {
-  try {
-    pg = require('../../backend/node_modules/pg');
-  } catch (e2) {
-    pg = require('../backend/node_modules/pg');
-  }
-}
-const { Client } = pg;
+const { Client } = require('pg');
 
 function getPgClient() {
   return new Client({

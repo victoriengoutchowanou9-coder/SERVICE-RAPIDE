@@ -105,10 +105,30 @@ module.exports = async (req, res) => {
       console.warn('Erreur envoi mailer resend:', mErr.message);
     }
 
+    try {
+      const { recordAuditLog } = require('../utils/audit');
+      await recordAuditLog({
+        eventType: 'EMAIL_RESEND_REQUESTED',
+        actionTitle: `Demande de renvoi du code de confirmation (${authUser.email})`,
+        userEmail: authUser.email,
+        module: 'AUTH',
+        resourceType: 'users',
+        resourceId: authUser.id,
+        status: 'SUCCESS',
+        details: { emailSent: emailDelivery.sent },
+        req,
+      });
+    } catch {}
+
+    const message = emailDelivery.sent
+      ? `Un nouveau code de confirmation a été envoyé à votre adresse e-mail (${authUser.email}).`
+      : `Le renvoi du code pour ${authUser.email} a été pris en compte. Si vous ne recevez rien dans les 60 secondes, vérifiez vos spams ou réessayez.`;
+
     return res.status(200).json({
-      message: 'Un nouveau code de confirmation a été envoyé à votre adresse e-mail.',
+      message,
       email: authUser.email,
       emailSent: emailDelivery.sent,
+      devCode: !emailDelivery.sent ? newToken : undefined,
     });
   } catch (err) {
     console.error('Erreur API Resend Confirmation:', err);

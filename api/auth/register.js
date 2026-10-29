@@ -101,6 +101,19 @@ module.exports = async (req, res) => {
 
     if (existing.rows.length > 0) {
       await pgClient.end();
+      try {
+        const { recordAuditLog } = require('../utils/audit');
+        await recordAuditLog({
+          eventType: 'USER_REGISTER_FAILED',
+          actionTitle: `Tentative d'inscription refusée : email déjà existant (${cleanEmail})`,
+          userEmail: cleanEmail,
+          module: 'AUTH',
+          resourceType: 'users',
+          status: 'FAILURE',
+          details: { reason: 'EMAIL_ALREADY_EXISTS' },
+          req,
+        });
+      } catch {}
       return res.status(409).json({ error: 'Un compte existe déjà avec cette adresse email.' });
     }
 
@@ -296,14 +309,41 @@ module.exports = async (req, res) => {
       console.warn('Erreur envoi mailer register:', mErr.message);
     }
 
+    // Journalisation d'audit réelle dans Supabase system_audit_logs
+    try {
+      const { recordAuditLog } = require('../utils/audit');
+      await recordAuditLog({
+        eventType: 'USER_REGISTER',
+        actionTitle: `Inscription réussie d'un nouveau compte ${role === 'PROVIDER' ? 'Prestataire' : 'Client'} (${createdUser.email})`,
+        userEmail: createdUser.email,
+        userRole: role,
+        module: 'AUTH',
+        resourceType: 'users',
+        resourceId: createdUser.id,
+        status: 'SUCCESS',
+        details: {
+          fullName: `${createdUser.firstName} ${createdUser.lastName}`,
+          country: createdUser.country,
+          city: createdUser.city,
+          emailDeliverySent: emailDelivery.sent,
+        },
+        req,
+      });
+    } catch (auditErr) {
+      console.warn('Erreur audit register:', auditErr.message);
+    }
+
+    const message = emailDelivery.sent
+      ? `Compte créé avec succès ! Un e-mail contenant votre code de confirmation a été envoyé à ${createdUser.email}.`
+      : `Compte créé avec succès ! Le code de confirmation à 6 chiffres a été préparé pour ${createdUser.email}. Si vous ne le recevez pas, vérifiez vos spams ou demandez un renvoi.`;
+
     return res.status(201).json({
-      message: emailDelivery.sent
-        ? `Compte créé avec succès ! Un e-mail contenant votre code de confirmation a été envoyé à ${createdUser.email}.`
-        : `Compte créé avec succès ! Code de confirmation envoyé à ${createdUser.email}.`,
+      message,
       requiresOtp: true,
       requiresEmailConfirmation: true,
       email: createdUser.email,
       emailSent: emailDelivery.sent,
+      devCode: !emailDelivery.sent ? confirmationToken : undefined,
       user: {
         id: createdUser.id,
         email: createdUser.email,

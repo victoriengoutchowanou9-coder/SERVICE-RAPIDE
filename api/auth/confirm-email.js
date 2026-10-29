@@ -103,6 +103,19 @@ module.exports = async (req, res) => {
     // 2. Vérification du code
     if (!authUser.confirmation_token || authUser.confirmation_token !== inputCode) {
       await pgClient.end();
+      try {
+        const { recordAuditLog } = require('../utils/audit');
+        await recordAuditLog({
+          eventType: 'EMAIL_CONFIRM_FAILED',
+          actionTitle: `Échec confirmation e-mail : code incorrect ou expiré (${cleanEmail})`,
+          userEmail: cleanEmail,
+          module: 'AUTH',
+          resourceType: 'users',
+          status: 'FAILURE',
+          details: { reason: 'INVALID_TOKEN' },
+          req,
+        });
+      } catch {}
       return res.status(400).json({ error: 'Code de confirmation incorrect ou expiré.' });
     }
 
@@ -129,6 +142,22 @@ module.exports = async (req, res) => {
     );
 
     await pgClient.end();
+
+    try {
+      const { recordAuditLog } = require('../utils/audit');
+      await recordAuditLog({
+        eventType: 'EMAIL_CONFIRMED',
+        actionTitle: `Adresse e-mail confirmée et validée avec succès (${cleanEmail})`,
+        userEmail: cleanEmail,
+        userRole: pubUser.role || 'CLIENT',
+        module: 'AUTH',
+        resourceType: 'users',
+        resourceId: authUser.id,
+        status: 'SUCCESS',
+        details: { method: 'EMAIL_OTP_VERIFIED' },
+        req,
+      });
+    } catch {}
 
     return res.status(200).json({
       message: 'Adresse e-mail confirmée avec succès ! Votre compte est activé.',

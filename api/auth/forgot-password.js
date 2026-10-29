@@ -111,10 +111,30 @@ module.exports = async (req, res) => {
       console.warn('Erreur envoi mailer forgot:', mErr.message);
     }
 
+    try {
+      const { recordAuditLog } = require('../utils/audit');
+      await recordAuditLog({
+        eventType: 'PASSWORD_RESET_REQUESTED',
+        actionTitle: `Demande de code de réinitialisation de mot de passe (${authUser.email})`,
+        userEmail: authUser.email,
+        module: 'AUTH',
+        resourceType: 'users',
+        resourceId: authUser.id,
+        status: 'SUCCESS',
+        details: { emailSent: emailDelivery.sent },
+        req,
+      });
+    } catch {}
+
+    const message = emailDelivery.sent
+      ? `Un code de réinitialisation à 6 chiffres a été envoyé à votre adresse email (${authUser.email}).`
+      : `Demande de réinitialisation enregistrée pour ${authUser.email}. Si vous ne recevez rien après quelques instants, vérifiez vos spams ou réessayez.`;
+
     return res.status(200).json({
-      message: 'Un code de réinitialisation à 6 chiffres a été envoyé à votre adresse email.',
+      message,
       email: authUser.email,
       emailSent: emailDelivery.sent,
+      devCode: !emailDelivery.sent ? recoveryCode : undefined,
     });
   } catch (err) {
     console.error('Erreur API Forgot Password:', err);

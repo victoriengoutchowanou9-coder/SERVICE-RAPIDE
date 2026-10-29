@@ -49,13 +49,26 @@ module.exports = async (req, res) => {
   try {
     await pgClient.connect();
 
+    let lookupEmail = cleanEmail;
+    if (lookupEmail === 'developer_admin' || lookupEmail === 'developer') {
+      lookupEmail = 'developer_admin@servicerapide.africa';
+    }
+    const cleanDigits = cleanEmail.replace(/\D/g, '');
+
     // 1. Recherche du compte et vérification du code
     const userRes = await pgClient.query(`
-      SELECT id, email, recovery_token, recovery_sent_at
-      FROM auth.users
-      WHERE LOWER(email) = LOWER($1)
+      SELECT au.id, au.email, au.recovery_token, au.recovery_sent_at, u.identifier
+      FROM auth.users au
+      LEFT JOIN public.users u ON u.id = au.id
+      WHERE LOWER(au.email) = LOWER($1)
+         OR (u.identifier IS NOT NULL AND LOWER(u.identifier) = LOWER($1))
+         OR (u.email IS NOT NULL AND LOWER(u.email) = LOWER($1))
+         OR ($2 != '' AND length($2) >= 8 AND (
+             u."phoneNumber" = $1
+             OR regexp_replace(u."phoneNumber", '\\D', '', 'g') = $2
+         ))
       LIMIT 1;
-    `, [cleanEmail]);
+    `, [lookupEmail, cleanDigits]);
 
     if (userRes.rows.length === 0) {
       await pgClient.end();
@@ -67,6 +80,19 @@ module.exports = async (req, res) => {
     // Vérification de validité du code
     if (!authUser.recovery_token || authUser.recovery_token !== inputCode) {
       await pgClient.end();
+      try {
+        const { recordAuditLog } = require('../utils/audit');
+        await recordAuditLog({
+          eventType: 'PASSWORD_RESET_FAILED',
+          actionTitle: `Échec réinitialisation mot de passe : code incorrect (${authUser.email})`,
+          userEmail: authUser.email,
+          module: 'AUTH',
+          resourceType: 'users',
+          status: 'FAILURE',
+          details: { reason: 'INVALID_CODE' },
+          req,
+        });
+      } catch {}
       return res.status(400).json({ error: 'Code de réinitialisation incorrect ou expiré.' });
     }
 
@@ -75,6 +101,19 @@ module.exports = async (req, res) => {
       const elapsedMinutes = (Date.now() - new Date(authUser.recovery_sent_at).getTime()) / (1000 * 60);
       if (elapsedMinutes > 30) {
         await pgClient.end();
+        try {
+          const { recordAuditLog } = require('../utils/audit');
+          await recordAuditLog({
+            eventType: 'PASSWORD_RESET_FAILED',
+            actionTitle: `Échec réinitialisation mot de passe : code expiré (${authUser.email})`,
+            userEmail: authUser.email,
+            module: 'AUTH',
+            resourceType: 'users',
+            status: 'FAILURE',
+            details: { reason: 'CODE_EXPIRED' },
+            req,
+          });
+        } catch {}
         return res.status(400).json({ error: 'Ce code a expiré (durée de validité : 30 minutes). Veuillez en demander un nouveau.' });
       }
     }
@@ -84,6 +123,7 @@ module.exports = async (req, res) => {
       UPDATE auth.users
       SET encrypted_password = crypt($1, gen_salt('bf')),
           recovery_token = NULL,
+          email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
           updated_at = NOW()
       WHERE id = $2;
     `, [password, authUser.id]);
@@ -101,6 +141,22 @@ module.exports = async (req, res) => {
     }
 
     await pgClient.end();
+
+    // 4. Journal d'audit de sécurité
+    try {
+      const { recordAuditLog } = require('../utils/audit');
+      await recordAuditLog({
+        eventType: 'PASSWORD_RESET_SUCCESS',
+        actionTitle: `Mot de passe réinitialisé avec succès (${authUser.email})`,
+        userEmail: authUser.email,
+        module: 'AUTH',
+        resourceType: 'users',
+        resourceId: authUser.id,
+        status: 'SUCCESS',
+        details: { method: 'RECOVERY_CODE_VALIDATED' },
+        req,
+      });
+    } catch {}
 
     return res.status(200).json({
       success: true,

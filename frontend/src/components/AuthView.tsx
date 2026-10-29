@@ -38,12 +38,16 @@ export const AuthView: React.FC<AuthViewProps> = ({
   // Modes : 'REGISTER' | 'LOGIN' | 'OTP' | 'FORGOT_PASSWORD' | 'RESET_PASSWORD'
   const [mode, setMode] = useState<'REGISTER' | 'LOGIN' | 'OTP' | 'FORGOT_PASSWORD' | 'RESET_PASSWORD'>(initialMode);
 
-  // Synchronisation si initialMode change depuis l'URL ou le Header
+  // Synchronisation sécurisée uniquement si initialMode change explicitement depuis le parent
+  const prevInitialModeRef = React.useRef(initialMode);
   useEffect(() => {
-    if (initialMode && mode !== 'OTP' && mode !== 'FORGOT_PASSWORD' && mode !== 'RESET_PASSWORD') {
-      setMode(initialMode);
+    if (initialMode && initialMode !== prevInitialModeRef.current) {
+      prevInitialModeRef.current = initialMode;
+      if (mode !== 'OTP' && mode !== 'FORGOT_PASSWORD' && mode !== 'RESET_PASSWORD') {
+        setMode(initialMode);
+      }
     }
-  }, [initialMode]);
+  }, [initialMode, mode]);
 
   // Champs de saisie
   const [firstName, setFirstName] = useState('');
@@ -337,6 +341,9 @@ export const AuthView: React.FC<AuthViewProps> = ({
       setNewPassword('');
       setConfirmNewPassword('');
       setMode('LOGIN');
+      if (onNavigate) {
+        onNavigate('LOGIN');
+      }
     } catch (err: any) {
       setError(err.message || 'Impossible de réinitialiser le mot de passe.');
     } finally {
@@ -411,10 +418,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
               <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs rounded-2xl flex flex-col gap-2">
                 <div className="flex items-center gap-2 font-black text-emerald-800">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Email de confirmation envoyé !</span>
+                  <span>Validation du compte</span>
                 </div>
                 <p className="text-[11px] text-emerald-700 leading-relaxed font-semibold">
-                  👉 <strong>Connexion automatique :</strong> Cliquez simplement sur le lien reçu dans votre email pour vous connecter directement sans avoir à taper de code.
+                  {otpInfoMsg}
+                </p>
+                <p className="text-[10px] text-emerald-600">
+                  Saisissez ci-dessous le code de sécurité à 6 chiffres pour activer définitivement votre profil.
                 </p>
               </div>
             )}

@@ -213,6 +213,20 @@ module.exports = async (req, res) => {
 
     if (!isPasswordValid) {
       await pgClient.end();
+      try {
+        const { recordAuditLog } = require('../utils/audit');
+        await recordAuditLog({
+          eventType: 'AUTH_LOGIN_FAILED',
+          actionTitle: `Échec de connexion : mot de passe incorrect (${row.email})`,
+          userEmail: row.email,
+          userRole: row.role,
+          module: 'AUTH',
+          resourceType: 'users',
+          status: 'FAILURE',
+          details: { loginAttempt: rawLogin, reason: 'INVALID_PASSWORD' },
+          req,
+        });
+      } catch {}
       return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect.' });
     }
 
@@ -242,6 +256,26 @@ module.exports = async (req, res) => {
     );
 
     await pgClient.end();
+
+    try {
+      const { recordAuditLog } = require('../utils/audit');
+      await recordAuditLog({
+        eventType: 'AUTH_LOGIN',
+        actionTitle: `Connexion réussie (${row.role || 'UTILISATEUR'}) : ${row.email}`,
+        userEmail: row.email,
+        userRole: row.role || 'CLIENT',
+        module: 'AUTH',
+        resourceType: 'users',
+        resourceId: row.id,
+        status: 'SUCCESS',
+        details: {
+          fullName: `${row.firstName || ''} ${row.lastName || ''}`.trim(),
+          country: row.country,
+          city: row.city,
+        },
+        req,
+      });
+    } catch {}
 
     return res.status(200).json({
       message: 'Connexion réussie',

@@ -246,7 +246,7 @@ export const FeedPosts: React.FC<FeedPostsProps> = ({
           <span>Campagne vérifiée Service Rapide</span>
         </span>
 
-        {ad.targetUrl ? (
+        {ad.targetUrl && (
           <a
             href={ad.targetUrl.startsWith('http') ? ad.targetUrl : `https://${ad.targetUrl}`}
             target="_blank"
@@ -254,16 +254,6 @@ export const FeedPosts: React.FC<FeedPostsProps> = ({
             className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-xs transition"
           >
             <span>Découvrir l'offre</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        ) : (
-          <a
-            href="https://wa.me/22955445122"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-xs transition"
-          >
-            <span>Contacter via WhatsApp</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
         )}

@@ -7,6 +7,7 @@ import { ProviderDashboard } from './components/ProviderDashboard';
 import { ClientView } from './components/ClientView';
 import { AdminDashboard } from './components/AdminDashboard';
 import { InstallAppModal } from './components/InstallAppModal';
+import { SupportModal } from './components/SupportModal';
 import { PostItem, ProviderItem, ServiceRequest } from './types';
 import { supabase, supabaseBackend } from './config/supabase';
 
@@ -253,6 +254,9 @@ export function App() {
             isOpen={isInstallModalOpen}
             onClose={() => setIsInstallModalOpen(false)}
           />
+          {activeDrawerSection === 'SUPPORT' && (
+            <SupportModal onClose={() => setActiveDrawerSection('')} />
+          )}
         </>
       )}
 

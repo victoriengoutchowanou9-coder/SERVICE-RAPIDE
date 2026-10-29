@@ -73,8 +73,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
     if (!activeSectionOverride) return;
     if (activeSectionOverride === 'PROFILE') {
       setShowProfileModal(true);
-    } else if (activeSectionOverride === 'SUPPORT') {
-      setShowSupportModal(true);
     } else if (activeSectionOverride === 'BOOKINGS' || activeSectionOverride === 'REQUESTS') {
       setActiveTab('REQUESTS');
     } else if (activeSectionOverride === 'PROVIDERS' || activeSectionOverride === 'FEED' || activeSectionOverride === 'ADS') {

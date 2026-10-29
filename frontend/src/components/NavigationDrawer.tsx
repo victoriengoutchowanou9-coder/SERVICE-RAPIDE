@@ -257,6 +257,19 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                 <CreditCard className="w-4 h-4 text-emerald-600" />
                 <span>Abonnement & Facturation</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => handleItemClick('SUPPORT')}
+                className={`w-full py-2.5 px-3 rounded-2xl text-xs font-bold transition flex items-center gap-3 ${
+                  currentSection === 'SUPPORT'
+                    ? 'bg-brand-50 text-brand-700 font-black shadow-2xs'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <HelpCircle className="w-4 h-4 text-slate-600" />
+                <span>Support Client 24/7</span>
+              </button>
             </>
           )}
 

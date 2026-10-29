@@ -25,7 +25,7 @@ export const INITIAL_VERIFIED_ADS: AdItem[] = [
     content: 'Bénéficiez de 15% de réduction sur tout le gros outillage et la livraison gratuite sur vos chantiers.',
     advertiser: 'Quincaillerie BTP Afrique',
     tag: 'Sponsorisé • Outillage',
-    targetUrl: 'https://wa.me/22955445122',
+    targetUrl: '',
     imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80',
     durationWeeks: 4,
     amountPaid: 4000,
@@ -670,7 +670,7 @@ export const AdsSection: React.FC<AdsSectionProps> = ({ compact = false, current
                   </label>
                   <input
                     type="text"
-                    placeholder="https://wa.me/22955445122"
+                    placeholder="Ex: https://wa.me/22900000000 ou site web de votre boutique"
                     value={newTargetUrl}
                     onChange={(e) => setNewTargetUrl(e.target.value)}
                     className="w-full min-h-[40px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none"

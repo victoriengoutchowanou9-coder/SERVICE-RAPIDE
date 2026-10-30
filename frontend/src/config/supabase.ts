@@ -62,7 +62,7 @@ export const supabaseBackend = {
 
     // 1. TENTATIVE VIA LE SERVEUR D'AUTHENTIFICATION DÉDIÉ (/api/auth)
     try {
-      const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+      const endpoint = isRegisterMode ? '/api/auth?action=register' : '/api/auth?action=login';
       const bodyPayload = isRegisterMode
         ? {
             email: cleanEmail,
@@ -288,7 +288,7 @@ export const supabaseBackend = {
 
     // Tentative via le serveur dédié
     try {
-      const res = await fetch('/api/auth/confirm-email', {
+      const res = await fetch('/api/auth?action=confirm-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail, token: cleanOtp }),
@@ -337,7 +337,7 @@ export const supabaseBackend = {
 
     // Tentative via le serveur dédié
     try {
-      const res = await fetch('/api/auth/resend-confirmation', {
+      const res = await fetch('/api/auth?action=resend-confirmation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail }),
@@ -382,7 +382,7 @@ export const supabaseBackend = {
 
     // 1. Tentative via l'API dédiée
     try {
-      const res = await fetch('/api/auth/forgot-password', {
+      const res = await fetch('/api/auth?action=forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail }),
@@ -430,7 +430,7 @@ export const supabaseBackend = {
 
     // 1. Tentative via l'API dédiée
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await fetch('/api/auth?action=reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

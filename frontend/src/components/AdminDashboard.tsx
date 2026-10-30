@@ -113,7 +113,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (!isBackground) setRefreshing(true);
     try {
       const adminToken = token || (typeof window !== 'undefined' ? localStorage.getItem('sr_token') : '') || 'sr_dev_session';
-      const res = await fetch('/api/admin/overview', {
+      const res = await fetch('/api/admin?action=overview', {
         headers: {
           'Authorization': `Bearer ${adminToken}`,
           'x-admin-token': adminToken,
@@ -150,7 +150,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleToggleUserBlock = async (userId: string) => {
     try {
       const adminToken = token || (typeof window !== 'undefined' ? localStorage.getItem('sr_token') : '') || 'sr_dev_session';
-      const res = await fetch('/api/admin/toggle-block', {
+      const res = await fetch('/api/admin?action=toggle-block', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,7 +181,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (!userToDelete) return;
     try {
       const adminToken = token || (typeof window !== 'undefined' ? localStorage.getItem('sr_token') : '') || 'sr_dev_session';
-      const res = await fetch('/api/admin/delete-user', {
+      const res = await fetch('/api/admin?action=delete-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -210,7 +210,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleExtendSub = async (subId: string) => {
     try {
       const adminToken = token || (typeof window !== 'undefined' ? localStorage.getItem('sr_token') : '') || 'sr_dev_session';
-      const res = await fetch('/api/admin/extend-sub', {
+      const res = await fetch('/api/admin?action=extend-sub', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

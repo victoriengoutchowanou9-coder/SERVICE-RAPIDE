@@ -521,10 +521,10 @@ export const supabaseBackend = {
   },
 
   /**
-   * 5. Attribution du rôle et initialisation du profil
+   * 5. Attribution du rôle et initialisation du profil (via API serveur pour contourner RLS)
    */
   async chooseRole(userId: string, payload: ChooseRolePayload) {
-    if (!isSupabaseConfigured || !userId) {
+    if (!userId) {
       return { role: payload.role };
     }
 
@@ -532,47 +532,72 @@ export const supabaseBackend = {
       throw new Error("Rôle non autorisé pour l'attribution publique.");
     }
 
-    await supabase
-      .from('users')
-      .update({
-        role: payload.role,
-        country: payload.country,
-        department: payload.department,
-        commune: payload.commune,
-        city: payload.city,
-        updatedAt: new Date().toISOString(),
-      })
-      .eq('id', userId);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('sr_token') || '' : '';
 
-    if (payload.role === 'PROVIDER') {
-      const { data: existing } = await supabase
-        .from('provider_profiles')
-        .select('id')
-        .eq('userId', userId)
-        .maybeSingle();
+    // Tentative via l'API serveur dédiée (PostgreSQL direct, sans RLS)
+    try {
+      const res = await fetch('/api/profile?action=choose-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok && data.user) {
+        // Persister immédiatement dans localStorage
+        if (typeof window !== 'undefined') {
+          try {
+            const session = JSON.parse(localStorage.getItem('sr_session') || '{}');
+            session.user = { ...session.user, ...data.user };
+            localStorage.setItem('sr_session', JSON.stringify(session));
+          } catch {}
+        }
+        return { role: data.user.role, providerProfile: data.user.providerProfile };
+      }
+      if (!res.ok) throw new Error(data.error || 'Erreur lors du choix du rôle.');
+    } catch (apiErr: any) {
+      if (apiErr.message && !apiErr.message.includes('fetch')) throw apiErr;
+      console.warn('API /api/profile?action=choose-role indisponible, fallback Supabase client');
+    }
 
-      const profileBody = {
-        userId,
-        singleName: payload.singleName || 'Professionnel',
-        serviceOffered: payload.serviceOffered || 'Services Généraux',
-        country: payload.country || '',
-        city: payload.city || 'Cotonou',
-        department: payload.department || 'Littoral',
-        commune: payload.commune || '',
-        whatsappNumber: payload.whatsappNumber || payload.phoneNumber || '',
-        directPhoneNumber: payload.phoneNumber || '',
-        availability: 'AVAILABLE',
-      };
+    // Fallback Supabase client
+    if (isSupabaseConfigured) {
+      await supabase
+        .from('users')
+        .update({
+          role: payload.role,
+          country: payload.country,
+          department: payload.department,
+          commune: payload.commune,
+          city: payload.city,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', userId);
 
-      if (existing) {
-        await supabase
+      if (payload.role === 'PROVIDER') {
+        const { data: existing } = await supabase
           .from('provider_profiles')
-          .update(profileBody)
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('provider_profiles')
-          .insert(profileBody);
+          .select('id')
+          .eq('userId', userId)
+          .maybeSingle();
+
+        const profileBody = {
+          userId,
+          singleName: payload.singleName || 'Professionnel',
+          serviceOffered: payload.serviceOffered || 'Services Généraux',
+          country: payload.country || '',
+          city: payload.city || 'Cotonou',
+          department: payload.department || 'Littoral',
+          commune: payload.commune || '',
+          whatsappNumber: payload.whatsappNumber || payload.phoneNumber || '',
+          directPhoneNumber: payload.phoneNumber || '',
+          availability: 'AVAILABLE',
+        };
+
+        if (existing) {
+          await supabase.from('provider_profiles').update(profileBody).eq('id', existing.id);
+        } else {
+          await supabase.from('provider_profiles').insert(profileBody);
+        }
       }
     }
 
@@ -583,49 +608,91 @@ export const supabaseBackend = {
    * 6. Changement de disponibilité 1-clic (Disponible / Occupé)
    */
   async updateAvailability(userId: string, availability: 'AVAILABLE' | 'BUSY') {
-    if (!isSupabaseConfigured || !userId) return;
+    if (!userId) return;
 
-    await supabase
-      .from('provider_profiles')
-      .update({ availability })
-      .eq('userId', userId);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('sr_token') || '' : '';
+
+    // Tentative via l'API profile
+    try {
+      const res = await fetch('/api/profile?action=update-provider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ availability }),
+      });
+      if (res.ok) return;
+    } catch {}
+
+    // Fallback Supabase
+    if (isSupabaseConfigured) {
+      await supabase.from('provider_profiles').update({ availability }).eq('userId', userId);
+    }
   },
 
   /**
-   * 7. Sauvegarde du profil prestataire
+   * 7. Sauvegarde du profil prestataire (via API serveur pour persistance garantie)
    */
   async updateProviderProfile(userId: string, profileData: any) {
-    if (!isSupabaseConfigured || !userId) return;
+    if (!userId) return;
 
-    await supabase
-      .from('provider_profiles')
-      .update({
-        singleName: profileData.singleName,
-        fullName: profileData.fullName,
-        serviceOffered: profileData.serviceOffered,
-        country: profileData.country,
-        city: profileData.city,
-        department: profileData.department,
-        commune: profileData.commune,
-        receivesOnSite: Boolean(profileData.receivesOnSite),
-        travelRequired: Boolean(profileData.travelRequired),
-        travelFee: profileData.travelFee || 0,
-        basePrice: profileData.basePrice || 5000,
-        pricingUnit: profileData.pricingUnit || 'PRESTATION',
-        hourlyRate: profileData.hourlyRate || null,
-        dailyRate: profileData.dailyRate || null,
-        pricingTiers: profileData.pricingTiers || [],
-        portfolioPhotos: profileData.portfolioPhotos || [],
-        whatsappNumber: profileData.whatsappNumber,
-        directPhoneNumber: profileData.directPhoneNumber,
-        photoUrl: profileData.photoUrl,
-        updatedAt: new Date().toISOString(),
-      })
-      .eq('userId', userId);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('sr_token') || '' : '';
+
+    // Tentative via l'API serveur dédiée
+    try {
+      const res = await fetch('/api/profile?action=update-provider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(profileData),
+      });
+      const data = await res.json();
+      if (res.ok && data.providerProfile) {
+        // Persister dans localStorage pour survivre au refresh
+        if (typeof window !== 'undefined') {
+          try {
+            const session = JSON.parse(localStorage.getItem('sr_session') || '{}');
+            session.user = { ...session.user, providerProfile: data.providerProfile };
+            localStorage.setItem('sr_session', JSON.stringify(session));
+          } catch {}
+        }
+        return data;
+      }
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la sauvegarde du profil.');
+    } catch (apiErr: any) {
+      if (apiErr.message && !apiErr.message.includes('fetch')) throw apiErr;
+      console.warn('API /api/profile?action=update-provider indisponible, fallback Supabase');
+    }
+
+    // Fallback Supabase client
+    if (isSupabaseConfigured) {
+      await supabase
+        .from('provider_profiles')
+        .update({
+          singleName: profileData.singleName,
+          fullName: profileData.fullName,
+          serviceOffered: profileData.serviceOffered,
+          country: profileData.country,
+          city: profileData.city,
+          department: profileData.department,
+          commune: profileData.commune,
+          receivesOnSite: Boolean(profileData.receivesOnSite),
+          travelRequired: Boolean(profileData.travelRequired),
+          travelFee: profileData.travelFee || 0,
+          basePrice: profileData.basePrice || 5000,
+          pricingUnit: profileData.pricingUnit || 'PRESTATION',
+          hourlyRate: profileData.hourlyRate || null,
+          dailyRate: profileData.dailyRate || null,
+          pricingTiers: profileData.pricingTiers || [],
+          portfolioPhotos: profileData.portfolioPhotos || [],
+          whatsappNumber: profileData.whatsappNumber,
+          directPhoneNumber: profileData.directPhoneNumber,
+          photoUrl: profileData.photoUrl,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('userId', userId);
+    }
   },
 
   /**
-   * 8. Sauvegarde du profil client
+   * 8. Sauvegarde du profil client (via API serveur pour persistance garantie)
    */
   async updateClientProfile(
     userId: string,
@@ -642,23 +709,54 @@ export const supabaseBackend = {
       city?: string;
     }
   ) {
-    if (!isSupabaseConfigured || !userId) return;
-    await supabase
-      .from('users')
-      .update({
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phoneNumber: data.phoneNumber,
-        avatarUrl: data.avatarUrl,
-        birthDate: data.birthDate || null,
-        country: data.country,
-        countryCode: data.countryCode,
-        department: data.department,
-        commune: data.commune,
-        city: data.city,
-        updatedAt: new Date().toISOString(),
-      })
-      .eq('id', userId);
+    if (!userId) return;
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('sr_token') || '' : '';
+
+    // Tentative via l'API serveur dédiée
+    try {
+      const res = await fetch('/api/profile?action=update-client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+      if (res.ok && result.user) {
+        // Persister dans localStorage
+        if (typeof window !== 'undefined') {
+          try {
+            const session = JSON.parse(localStorage.getItem('sr_session') || '{}');
+            session.user = { ...session.user, ...result.user };
+            localStorage.setItem('sr_session', JSON.stringify(session));
+          } catch {}
+        }
+        return result;
+      }
+      if (!res.ok) throw new Error(result.error || 'Erreur lors de la sauvegarde.');
+    } catch (apiErr: any) {
+      if (apiErr.message && !apiErr.message.includes('fetch')) throw apiErr;
+      console.warn('API /api/profile?action=update-client indisponible, fallback Supabase');
+    }
+
+    // Fallback Supabase client
+    if (isSupabaseConfigured) {
+      await supabase
+        .from('users')
+        .update({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phoneNumber: data.phoneNumber,
+          avatarUrl: data.avatarUrl,
+          birthDate: data.birthDate || null,
+          country: data.country,
+          countryCode: data.countryCode,
+          department: data.department,
+          commune: data.commune,
+          city: data.city,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', userId);
+    }
   },
 
   /**

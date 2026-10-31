@@ -227,14 +227,19 @@ export function App() {
   };
 
   const handleRoleChosen = (roleData: any) => {
-    setAuthData((prev: any) => ({
-      ...prev,
+    const updatedAuthData = {
+      ...authData,
       user: {
-        ...prev.user,
+        ...authData?.user,
         role: roleData.role,
-        providerProfile: roleData.details?.providerProfile || prev.user?.providerProfile,
+        providerProfile: roleData.details?.providerProfile || roleData.providerProfile || authData?.user?.providerProfile,
       },
-    }));
+    };
+    setAuthData(updatedAuthData);
+    // Persister immédiatement dans localStorage pour survivre au refresh
+    try {
+      localStorage.setItem('sr_session', JSON.stringify(updatedAuthData));
+    } catch {}
   };
 
   // Déconnexion complète

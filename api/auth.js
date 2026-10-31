@@ -156,6 +156,10 @@ async function handleLogin(req, res) {
         });
       }
 
+      // Profil prestataire éventuel
+      const provResFallback = await pgClient.query(`SELECT * FROM public.provider_profiles WHERE "userId" = $1 LIMIT 1;`, [pUser.id]);
+      const providerProfileFallback = provResFallback.rows[0] || null;
+
       const jwtSecret = process.env.JWT_SECRET || 'super_secret_jwt_key_service_rapide_afrique_2025_secure';
       const token = createJwtToken({ sub: pUser.id, email: pUser.email, role: pUser.role }, jwtSecret);
 
@@ -179,6 +183,7 @@ async function handleLogin(req, res) {
           clientTrialExpiresAt: pUser.clientTrialExpiresAt,
           clientSubscriptionExpiresAt: pUser.clientSubscriptionExpiresAt,
           createdAt: pUser.createdAt,
+          providerProfile: providerProfileFallback,
         },
       });
     }

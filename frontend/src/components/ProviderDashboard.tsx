@@ -298,14 +298,16 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    if (onUpdateProviderProfile) onUpdateProviderProfile(profile);
 
     try {
       await supabaseBackend.updateProviderProfile(user?.id, profile);
-    } catch {}
-
-    setSuccessMsg('Profil professionnel, tarifs et zones d’intervention enregistrés avec succès !');
-    setTimeout(() => setSuccessMsg(null), 3000);
+      if (onUpdateProviderProfile) onUpdateProviderProfile(profile);
+      setSuccessMsg("Profil professionnel, tarifs, photos et zones d'intervention enregistrés avec succès !");
+    } catch (err: any) {
+      console.error('Erreur sauvegarde profil:', err);
+      setSuccessMsg("❌ Erreur lors de l'enregistrement : " + (err.message || 'Veuillez réessayer.'));
+    }
+    setTimeout(() => setSuccessMsg(null), 4000);
     setLoading(false);
   };
 

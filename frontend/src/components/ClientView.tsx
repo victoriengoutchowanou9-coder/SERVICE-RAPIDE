@@ -65,9 +65,20 @@ export const ClientView: React.FC<ClientViewProps> = ({
   onLogout,
   activeSectionOverride,
 }) => {
-  const [activeTab, setActiveTab] = useState<'PROVIDERS' | 'REQUESTS' | 'FEED' | 'ADS'>('PROVIDERS');
+  const [activeTab, setActiveTab] = useState<'PROVIDERS' | 'REQUESTS' | 'FEED' | 'ADS'>(() => {
+    try {
+      const saved = sessionStorage.getItem('sr_client_tab');
+      if (saved === 'PROVIDERS' || saved === 'REQUESTS' || saved === 'FEED' || saved === 'ADS') return saved;
+    } catch {}
+    return 'PROVIDERS';
+  });
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+
+  // Persister l'onglet actif dans sessionStorage
+  React.useEffect(() => {
+    try { sessionStorage.setItem('sr_client_tab', activeTab); } catch {}
+  }, [activeTab]);
 
   React.useEffect(() => {
     if (!activeSectionOverride) return;

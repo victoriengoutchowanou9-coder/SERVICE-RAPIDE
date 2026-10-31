@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import {
   LifeBuoy,
-  MessageCircle,
-  Phone,
+  Mail,
   CheckCircle2,
   Clock,
   ShieldCheck,
@@ -13,15 +12,16 @@ export const SupportModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);
 
-  // Coordonnées officielles du support client Service Rapide
-  const WHATSAPP_NUMBER = '+22955445122';
-  const WHATSAPP_LINK = 'https://wa.me/22955445122?text=Bonjour%20Support%20Service%20Rapide,%20j%27ai%20besoin%20d%27assistance.';
-  const PHONE_NUMBER = '+2290155445122';
-  const PHONE_CALL_LINK = 'tel:+2290155445122';
+  // Adresse email officielle du support client Service Rapide
+  const SUPPORT_EMAIL = 'ecogest15@gmail.com';
+  const MAILTO_LINK = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Demande d\'assistance - Service Rapide')}`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
+    // Ouvre le client email avec le sujet et le message pré-remplis
+    const mailtoWithBody = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+    window.open(mailtoWithBody, '_blank');
     setSent(true);
     setTimeout(() => {
       onClose();
@@ -39,7 +39,7 @@ export const SupportModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-black text-slate-900">Support Client Service Rapide</h3>
-              <p className="text-[11px] text-slate-500">Assistance 24/7 et résolution des litiges</p>
+              <p className="text-[11px] text-slate-500">Assistance et résolution des litiges</p>
             </div>
           </div>
           <button
@@ -52,59 +52,30 @@ export const SupportModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           </button>
         </div>
 
-        {/* Canaux officiels directs : WhatsApp et Appel Téléphonique */}
+        {/* Canal officiel : Email uniquement */}
         <div className="space-y-2.5">
           <p className="text-xs font-black uppercase tracking-wider text-slate-700">
-            Coordonnées Officielles d'Assistance Directe
+            Contactez-nous par Email
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {/* Bouton WhatsApp */}
-            <a
-              href={WHATSAPP_LINK}
-              target="_blank"
-              rel="noreferrer"
-              className="p-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-200 text-emerald-900 transition flex flex-col justify-between shadow-2xs group"
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-                  <MessageCircle className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-black block group-hover:text-emerald-700">WhatsApp Support</span>
-                  <span className="text-[10px] text-emerald-700 font-semibold">Réponse rapide</span>
-                </div>
-              </div>
-              <div className="pt-1 border-t border-emerald-200/60 mt-1">
-                <span className="text-xs font-black text-emerald-950 block">{WHATSAPP_NUMBER}</span>
-                <span className="text-[10px] text-emerald-700 underline font-bold mt-0.5 inline-block">
-                  Contacter le support sur WhatsApp →
-                </span>
-              </div>
-            </a>
-
-            {/* Bouton Appel téléphonique direct */}
-            <a
-              href={PHONE_CALL_LINK}
-              className="p-3.5 rounded-2xl bg-blue-50 hover:bg-blue-100/90 border border-blue-200 text-blue-900 transition flex flex-col justify-between shadow-2xs group"
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
-                  <Phone className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-black block group-hover:text-blue-700">Ligne Téléphonique</span>
-                  <span className="text-[10px] text-blue-700 font-semibold">Appel direct</span>
-                </div>
-              </div>
-              <div className="pt-1 border-t border-blue-200/60 mt-1">
-                <span className="text-xs font-black text-blue-950 block">{PHONE_NUMBER}</span>
-                <span className="text-[10px] text-blue-700 underline font-bold mt-0.5 inline-block">
-                  Appeler le support →
-                </span>
-              </div>
-            </a>
-          </div>
+          <a
+            href={MAILTO_LINK}
+            target="_blank"
+            rel="noreferrer"
+            className="p-4 rounded-2xl bg-blue-50 hover:bg-blue-100/90 border border-blue-200 text-blue-900 transition flex items-center gap-4 shadow-2xs group"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
+              <Mail className="w-6 h-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-black block group-hover:text-blue-700">Support par Email</span>
+              <span className="text-xs text-blue-700 font-semibold block mt-0.5">Notre équipe vous répond rapidement</span>
+              <span className="text-sm font-black text-blue-950 block mt-1.5">{SUPPORT_EMAIL}</span>
+              <span className="text-[10px] text-blue-700 underline font-bold mt-1 inline-block">
+                Envoyer un email au support →
+              </span>
+            </div>
+          </a>
         </div>
 
         {/* Message de confirmation ou formulaire écrit */}
@@ -115,7 +86,7 @@ export const SupportModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
               Message d'assistance transmis avec succès !
             </p>
             <p className="text-[11px] text-emerald-700">
-              Un agent du support client vous contactera sans délai.
+              Un agent du support client vous contactera sans délai par email.
             </p>
           </div>
         ) : (

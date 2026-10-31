@@ -97,7 +97,18 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
     };
   });
 
-  const [activeSubTab, setActiveSubTab] = useState<'MISSIONS' | 'PROFILE' | 'BILLING' | 'FEED' | 'ADS'>('MISSIONS');
+  const [activeSubTab, setActiveSubTab] = useState<'MISSIONS' | 'PROFILE' | 'BILLING' | 'FEED' | 'ADS'>(() => {
+    try {
+      const saved = sessionStorage.getItem('sr_provider_tab');
+      if (saved === 'MISSIONS' || saved === 'PROFILE' || saved === 'BILLING' || saved === 'FEED' || saved === 'ADS') return saved;
+    } catch {}
+    return 'MISSIONS';
+  });
+
+  // Persister l'onglet actif dans sessionStorage
+  useEffect(() => {
+    try { sessionStorage.setItem('sr_provider_tab', activeSubTab); } catch {}
+  }, [activeSubTab]);
 
   useEffect(() => {
     if (!activeSectionOverride) return;

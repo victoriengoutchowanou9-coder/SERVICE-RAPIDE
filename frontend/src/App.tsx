@@ -22,8 +22,23 @@ export function App() {
 
   // État du menu trois traits (☰)
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [activeDrawerSection, setActiveDrawerSection] = useState<string>('');
+  const [activeDrawerSection, setActiveDrawerSection] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem('sr_active_section') || '';
+    } catch { return ''; }
+  });
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
+  // Persister la section active dans sessionStorage pour survivre au refresh
+  useEffect(() => {
+    try {
+      if (activeDrawerSection) {
+        sessionStorage.setItem('sr_active_section', activeDrawerSection);
+      } else {
+        sessionStorage.removeItem('sr_active_section');
+      }
+    } catch {}
+  }, [activeDrawerSection]);
 
   // Navigation interne sans rechargement
   const navigateTo = (path: string, mode: 'LOGIN' | 'REGISTER' = 'LOGIN') => {
@@ -42,6 +57,13 @@ export function App() {
         const parsed = JSON.parse(savedSession);
         if (parsed?.user) {
           setAuthData(parsed);
+          // Restaurer l'URL /app si l'utilisateur est connecté (éviter de rester sur /connexion au refresh)
+          if (typeof window !== 'undefined') {
+            const p = window.location.pathname.toLowerCase();
+            if (p === '/' || p === '/connexion' || p === '/inscription') {
+              window.history.replaceState({}, '', '/app');
+            }
+          }
         }
       }
     } catch (e) {
@@ -197,6 +219,11 @@ export function App() {
     if (typeof window !== 'undefined') {
       window.history.pushState({}, '', '/app');
     }
+    // Restaurer la section active sauvegardée s'il y en a une
+    try {
+      const savedSection = sessionStorage.getItem('sr_active_section');
+      if (savedSection) setActiveDrawerSection(savedSection);
+    } catch {}
   };
 
   const handleRoleChosen = (roleData: any) => {

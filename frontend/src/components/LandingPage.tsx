@@ -173,15 +173,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onNavigateAut
                 3
               </div>
               <h3 className="text-base font-black text-slate-900 mb-2">
-                Échangez sur WhatsApp
+                Contactez le Prestataire
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Appelez directement le prestataire ou lancez une conversation WhatsApp en un clic pour organiser l'intervention sur place ou à domicile.
+                Appelez directement le prestataire ou envoyez-lui un message pour organiser l'intervention sur place ou à domicile.
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-[11px] font-bold text-blue-700">
               <PhoneCall className="w-3.5 h-3.5" />
-              <span>Liaison WhatsApp immédiate</span>
+              <span>Mise en contact directe</span>
             </div>
           </div>
         </div>

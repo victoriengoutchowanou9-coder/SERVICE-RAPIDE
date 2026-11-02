@@ -88,9 +88,17 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
         {/* Identité utilisateur */}
         <div className="p-4 border-b border-slate-100 bg-white">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center font-black text-base shrink-0 shadow-2xs">
-              {user?.firstName ? user.firstName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'U'}
-            </div>
+            {(user?.avatarUrl || user?.providerProfile?.photoUrl) ? (
+              <img
+                src={user.avatarUrl || user.providerProfile?.photoUrl}
+                alt="Avatar"
+                className="w-11 h-11 rounded-2xl border border-brand-200 object-cover shrink-0 shadow-2xs"
+              />
+            ) : (
+              <div className="w-11 h-11 rounded-2xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center font-black text-base shrink-0 shadow-2xs">
+                {user?.firstName ? user.firstName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'U'}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <p className="text-xs font-black text-slate-900 truncate">
                 {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.email}

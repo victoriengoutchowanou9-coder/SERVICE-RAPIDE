@@ -171,6 +171,8 @@ async function handleChooseRole(req, res, userId) {
 }
 
 // ─── POST ?action=update-provider ───────────────────────────────────
+// Requête DYNAMIQUE : ne met à jour QUE les champs envoyés dans le body.
+// Cela évite d'écraser les photos/données existantes lors d'un changement partiel.
 async function handleUpdateProvider(req, res, userId) {
   const b = req.body || {};
   const pg = getPgClient();
@@ -179,66 +181,78 @@ async function handleUpdateProvider(req, res, userId) {
     const existRes = await pg.query('SELECT id FROM public.provider_profiles WHERE "userId" = $1 LIMIT 1;', [userId]);
     if (existRes.rows.length === 0) {
       await pg.end();
-      return res.status(404).json({ error: 'Profil prestataire non trouvé. Veuillez d\'abord choisir le rôle prestataire.' });
+      return res.status(404).json({ error: 'Profil prestataire non trouvé.' });
     }
 
-    // Sérialiser les tableaux JSON
-    const portfolioPhotos = JSON.stringify(Array.isArray(b.portfolioPhotos) ? b.portfolioPhotos : []);
-    const pricingTiers = JSON.stringify(Array.isArray(b.pricingTiers) ? b.pricingTiers : []);
-    const skills = JSON.stringify(Array.isArray(b.skills) ? b.skills : []);
-    const interventionZones = JSON.stringify(Array.isArray(b.interventionZones) ? b.interventionZones : []);
+    // Construction dynamique de la clause SET
+    const setClauses = [];
+    const values = [userId]; // $1 = userId
+    let idx = 2;
 
-    await pg.query(`
-      UPDATE public.provider_profiles SET
-        "singleName" = COALESCE(NULLIF($2,''), "singleName"),
-        "fullName" = COALESCE(NULLIF($3,''), "fullName"),
-        "serviceOffered" = COALESCE(NULLIF($4,''), "serviceOffered"),
-        country = COALESCE(NULLIF($5,''), country),
-        city = COALESCE(NULLIF($6,''), city),
-        department = COALESCE(NULLIF($7,''), department),
-        commune = COALESCE(NULLIF($8,''), commune),
-        "receivesOnSite" = $9,
-        "travelRequired" = $10,
-        "travelFee" = $11,
-        "basePrice" = $12,
-        "pricingUnit" = COALESCE(NULLIF($13,''), "pricingUnit"),
-        "hourlyRate" = $14,
-        "dailyRate" = $15,
-        "pricingTiers" = $16::jsonb,
-        "portfolioPhotos" = $17::jsonb,
-        "whatsappNumber" = COALESCE(NULLIF($18,''), "whatsappNumber"),
-        "directPhoneNumber" = COALESCE(NULLIF($19,''), "directPhoneNumber"),
-        "photoUrl" = $20,
-        skills = $21::jsonb,
-        "interventionZones" = $22::jsonb,
-        "updatedAt" = NOW()
-      WHERE "userId" = $1;
-    `, [
-      userId,
-      b.singleName || '',
-      b.fullName || '',
-      b.serviceOffered || '',
-      b.country || '',
-      b.city || '',
-      b.department || '',
-      b.commune || '',
-      Boolean(b.receivesOnSite),
-      Boolean(b.travelRequired),
-      parseFloat(b.travelFee) || 0,
-      parseFloat(b.basePrice) || 5000,
-      b.pricingUnit || '',
-      b.hourlyRate ? parseFloat(b.hourlyRate) : null,
-      b.dailyRate ? parseFloat(b.dailyRate) : null,
-      pricingTiers,
-      portfolioPhotos,
-      b.whatsappNumber || '',
-      b.directPhoneNumber || '',
-      b.photoUrl || null,
-      skills,
-      interventionZones,
-    ]);
+    const addText = (col, val) => {
+      if (val !== undefined && val !== null) {
+        setClauses.push(`"${col}" = COALESCE(NULLIF($${idx},''), "${col}")`);
+        values.push(String(val));
+        idx++;
+      }
+    };
+    const addRaw = (col, val) => {
+      if (val !== undefined) {
+        setClauses.push(`"${col}" = $${idx}`);
+        values.push(val);
+        idx++;
+      }
+    };
+    const addJsonb = (col, val) => {
+      if (val !== undefined) {
+        setClauses.push(`"${col}" = $${idx}::jsonb`);
+        values.push(JSON.stringify(Array.isArray(val) ? val : []));
+        idx++;
+      }
+    };
 
-    // Retourner le profil mis à jour
+    // Champs texte (COALESCE pour ne pas écraser si vide)
+    addText('singleName', b.singleName);
+    addText('fullName', b.fullName);
+    addText('serviceOffered', b.serviceOffered);
+    addText('country', b.country);
+    addText('city', b.city);
+    addText('department', b.department);
+    addText('commune', b.commune);
+    addText('pricingUnit', b.pricingUnit);
+    addText('whatsappNumber', b.whatsappNumber);
+    addText('directPhoneNumber', b.directPhoneNumber);
+
+    // Champs booléens/numériques (seulement si explicitement fournis)
+    if (b.receivesOnSite !== undefined) addRaw('receivesOnSite', Boolean(b.receivesOnSite));
+    if (b.travelRequired !== undefined) addRaw('travelRequired', Boolean(b.travelRequired));
+    if (b.travelFee !== undefined) addRaw('travelFee', parseFloat(b.travelFee) || 0);
+    if (b.basePrice !== undefined) addRaw('basePrice', parseFloat(b.basePrice) || 5000);
+    if (b.hourlyRate !== undefined) addRaw('hourlyRate', b.hourlyRate ? parseFloat(b.hourlyRate) : null);
+    if (b.dailyRate !== undefined) addRaw('dailyRate', b.dailyRate ? parseFloat(b.dailyRate) : null);
+    if (b.availability !== undefined) addText('availability', b.availability);
+
+    // Photo de profil (seulement si fournie — ne PAS écraser avec null)
+    if (b.photoUrl !== undefined && b.photoUrl !== null) {
+      addRaw('photoUrl', b.photoUrl);
+    }
+
+    // Tableaux JSONB (seulement si explicitement fournis dans le body)
+    if (b.portfolioPhotos !== undefined) addJsonb('portfolioPhotos', b.portfolioPhotos);
+    if (b.pricingTiers !== undefined) addJsonb('pricingTiers', b.pricingTiers);
+    if (b.skills !== undefined) addJsonb('skills', b.skills);
+    if (b.interventionZones !== undefined) addJsonb('interventionZones', b.interventionZones);
+
+    if (setClauses.length === 0) {
+      await pg.end();
+      return res.status(400).json({ error: 'Aucun champ à mettre à jour.' });
+    }
+
+    setClauses.push('"updatedAt" = NOW()');
+    const sql = `UPDATE public.provider_profiles SET ${setClauses.join(', ')} WHERE "userId" = $1;`;
+    await pg.query(sql, values);
+
+    // Retourner le profil complet mis à jour
     const ppRes = await pg.query('SELECT * FROM public.provider_profiles WHERE "userId" = $1 LIMIT 1;', [userId]);
     await pg.end();
 
@@ -250,39 +264,80 @@ async function handleUpdateProvider(req, res, userId) {
   }
 }
 
+// ─── POST ?action=update-availability ───────────────────────────────
+// Endpoint dédié pour changer uniquement la disponibilité (sans toucher au reste)
+async function handleUpdateAvailability(req, res, userId) {
+  const { availability } = req.body || {};
+  if (availability !== 'AVAILABLE' && availability !== 'BUSY') {
+    return res.status(400).json({ error: 'Valeur invalide. Utilisez AVAILABLE ou BUSY.' });
+  }
+  const pg = getPgClient();
+  try {
+    await pg.connect();
+    await pg.query('UPDATE public.provider_profiles SET availability = $1, "updatedAt" = NOW() WHERE "userId" = $2;', [availability, userId]);
+    await pg.end();
+    return res.status(200).json({ availability });
+  } catch (err) {
+    console.error('Erreur update-availability:', err);
+    try { await pg.end(); } catch {}
+    return res.status(500).json({ error: 'Erreur lors du changement de disponibilité.' });
+  }
+}
+
 // ─── POST ?action=update-client ─────────────────────────────────────
+// Requête DYNAMIQUE : ne met à jour QUE les champs envoyés dans le body.
 async function handleUpdateClient(req, res, userId) {
   const b = req.body || {};
   const pg = getPgClient();
   try {
     await pg.connect();
-    await pg.query(`
-      UPDATE public.users SET
-        "firstName" = COALESCE(NULLIF($2,''), "firstName"),
-        "lastName" = COALESCE(NULLIF($3,''), "lastName"),
-        "phoneNumber" = COALESCE(NULLIF($4,''), "phoneNumber"),
-        "avatarUrl" = $5,
-        "birthDate" = $6,
-        country = COALESCE(NULLIF($7,''), country),
-        "countryCode" = COALESCE(NULLIF($8,''), "countryCode"),
-        department = COALESCE(NULLIF($9,''), department),
-        commune = COALESCE(NULLIF($10,''), commune),
-        city = COALESCE(NULLIF($11,''), city),
-        "updatedAt" = NOW()
-      WHERE id = $1;
-    `, [
-      userId,
-      b.firstName || '',
-      b.lastName || '',
-      b.phoneNumber || '',
-      b.avatarUrl || null,
-      b.birthDate || null,
-      b.country || '',
-      b.countryCode || '',
-      b.department || '',
-      b.commune || '',
-      b.city || '',
-    ]);
+
+    // Construction dynamique de la clause SET
+    const setClauses = [];
+    const values = [userId]; // $1 = userId
+    let idx = 2;
+
+    const addText = (col, val) => {
+      if (val !== undefined && val !== null) {
+        setClauses.push(`"${col}" = COALESCE(NULLIF($${idx},''), "${col}")`);
+        values.push(String(val));
+        idx++;
+      }
+    };
+    const addRaw = (col, val) => {
+      if (val !== undefined) {
+        setClauses.push(`"${col}" = $${idx}`);
+        values.push(val);
+        idx++;
+      }
+    };
+
+    addText('firstName', b.firstName);
+    addText('lastName', b.lastName);
+    addText('phoneNumber', b.phoneNumber);
+    addText('country', b.country);
+    addText('countryCode', b.countryCode);
+    addText('department', b.department);
+    addText('commune', b.commune);
+    addText('city', b.city);
+
+    // Avatar : seulement si explicitement fourni et non null
+    if (b.avatarUrl !== undefined && b.avatarUrl !== null) {
+      addRaw('avatarUrl', b.avatarUrl);
+    }
+    // Date de naissance
+    if (b.birthDate !== undefined) {
+      addRaw('birthDate', b.birthDate || null);
+    }
+
+    if (setClauses.length === 0) {
+      await pg.end();
+      return res.status(400).json({ error: 'Aucun champ à mettre à jour.' });
+    }
+
+    setClauses.push('"updatedAt" = NOW()');
+    const sql = `UPDATE public.users SET ${setClauses.join(', ')} WHERE id = $1;`;
+    await pg.query(sql, values);
 
     const uRes = await pg.query('SELECT * FROM public.users WHERE id = $1 LIMIT 1;', [userId]);
     await pg.end();
@@ -329,14 +384,15 @@ module.exports = async (req, res) => {
 
   const action = (req.query.action || '').toLowerCase();
   switch (action) {
-    case 'get':           return handleGetProfile(req, res, userId);
-    case 'choose-role':   return handleChooseRole(req, res, userId);
-    case 'update-provider': return handleUpdateProvider(req, res, userId);
-    case 'update-client': return handleUpdateClient(req, res, userId);
+    case 'get':                return handleGetProfile(req, res, userId);
+    case 'choose-role':        return handleChooseRole(req, res, userId);
+    case 'update-provider':    return handleUpdateProvider(req, res, userId);
+    case 'update-availability': return handleUpdateAvailability(req, res, userId);
+    case 'update-client':      return handleUpdateClient(req, res, userId);
     default:
       return res.status(400).json({
         error: 'Action profil non reconnue.',
-        availableActions: ['get', 'choose-role', 'update-provider', 'update-client'],
+        availableActions: ['get', 'choose-role', 'update-provider', 'update-availability', 'update-client'],
       });
   }
 };

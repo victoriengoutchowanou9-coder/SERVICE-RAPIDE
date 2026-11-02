@@ -606,15 +606,16 @@ export const supabaseBackend = {
 
   /**
    * 6. Changement de disponibilité 1-clic (Disponible / Occupé)
+   *    Utilise un endpoint dédié pour ne PAS écraser les photos/données du profil.
    */
   async updateAvailability(userId: string, availability: 'AVAILABLE' | 'BUSY') {
     if (!userId) return;
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('sr_token') || '' : '';
 
-    // Tentative via l'API profile
+    // Tentative via l'API dédiée update-availability
     try {
-      const res = await fetch('/api/profile?action=update-provider', {
+      const res = await fetch('/api/profile?action=update-availability', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ availability }),

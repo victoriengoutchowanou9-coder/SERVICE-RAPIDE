@@ -49,7 +49,7 @@ export function App() {
     }
   };
 
-  // 1. Restauration de session locale au premier montage
+  // 1. Restauration de session locale au premier montage + rafraîchissement depuis API
   useEffect(() => {
     try {
       const savedSession = localStorage.getItem('sr_session');
@@ -63,6 +63,22 @@ export function App() {
             if (p === '/' || p === '/connexion' || p === '/inscription') {
               window.history.replaceState({}, '', '/app');
             }
+          }
+          // Rafraîchir le profil depuis la BDD pour avoir les données les plus récentes (photos, etc.)
+          const token = parsed.accessToken || localStorage.getItem('sr_token') || '';
+          if (token) {
+            fetch('/api/profile?action=get', {
+              headers: { 'Authorization': `Bearer ${token}` },
+            })
+              .then(r => r.ok ? r.json() : null)
+              .then(data => {
+                if (data?.user) {
+                  const freshAuthData = { ...parsed, user: { ...parsed.user, ...data.user } };
+                  setAuthData(freshAuthData);
+                  try { localStorage.setItem('sr_session', JSON.stringify(freshAuthData)); } catch {}
+                }
+              })
+              .catch(() => {}); // Silencieux en cas d'erreur réseau
           }
         }
       }
@@ -259,10 +275,12 @@ export function App() {
   };
 
   const handleUpdateUser = (updatedUser: any) => {
-    setAuthData((prev: any) => ({
-      ...prev,
-      user: updatedUser,
-    }));
+    const newAuthData = { ...authData, user: updatedUser };
+    setAuthData(newAuthData);
+    // Persister immédiatement dans localStorage pour survivre au refresh/déconnexion
+    try {
+      localStorage.setItem('sr_session', JSON.stringify(newAuthData));
+    } catch {}
   };
 
   const user = authData?.user;

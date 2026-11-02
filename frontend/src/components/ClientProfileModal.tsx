@@ -3,6 +3,7 @@ import { User, Phone, MapPin, Camera, Save, CheckCircle, CreditCard, Sparkles, A
 import { supabaseBackend } from '../config/supabase';
 import { saspayClient } from '../config/saspay';
 import { GeoCascadeSelect, GeoSelection } from './GeoCascadeSelect';
+import { compressImage } from '../utils/imageUtils';
 
 interface ClientProfileModalProps {
   user: any;
@@ -48,20 +49,19 @@ export const ClientProfileModal: React.FC<ClientProfileModalProps> = ({
     }
   }, [user?.id]);
 
-  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        alert("La taille de l'image ne doit pas dépasser 3 Mo.");
+      if (file.size > 5 * 1024 * 1024) {
+        alert("La taille de l'image ne doit pas dépasser 5 Mo.");
         return;
       }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setAvatarUrl(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file, 400, 400, 0.75);
+        setAvatarUrl(compressed);
+      } catch {
+        alert("Erreur lors du traitement de l'image.");
+      }
     }
   };
 

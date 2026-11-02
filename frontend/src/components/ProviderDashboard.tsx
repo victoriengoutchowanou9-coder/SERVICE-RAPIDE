@@ -39,6 +39,7 @@ import { PostItem, ServiceRequest, ReviewItem, PricingTier } from '../types';
 import { supabaseBackend } from '../config/supabase';
 import { saspayClient } from '../config/saspay';
 import { GeoCascadeSelect } from './GeoCascadeSelect';
+import { compressImage, compressImages } from '../utils/imageUtils';
 
 interface ProviderDashboardProps {
   user: any;
@@ -311,46 +312,38 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
     setLoading(false);
   };
 
-  // Gestion du téléversement de la photo
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Gestion du téléversement de la photo de profil (avec compression)
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setProfile((prev: any) => ({ ...prev, photoUrl: reader.result as string }));
-        setSuccessMsg('Photo sélectionnée. Cliquez sur Enregistrer pour valider.');
+      try {
+        const compressed = await compressImage(file, 400, 400, 0.75);
+        setProfile((prev: any) => ({ ...prev, photoUrl: compressed }));
+        setSuccessMsg('Photo compressée. Cliquez sur Enregistrer pour valider.');
         setTimeout(() => setSuccessMsg(null), 3000);
-      };
-      reader.readAsDataURL(file);
+      } catch {
+        setSuccessMsg('Erreur lors du traitement de la photo.');
+        setTimeout(() => setSuccessMsg(null), 3000);
+      }
     }
   };
 
-  // Gestion du téléversement de plusieurs photos de réalisations (Portfolio)
-  const handlePortfolioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Gestion du téléversement de plusieurs photos de réalisations (Portfolio) avec compression
+  const handlePortfolioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    const fileArray = Array.from(files);
-    let loadedCount = 0;
-    const newPhotos: string[] = [];
-
-    fileArray.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          newPhotos.push(reader.result);
-        }
-        loadedCount++;
-        if (loadedCount === fileArray.length) {
-          setProfile((prev: any) => ({
-            ...prev,
-            portfolioPhotos: [...(prev.portfolioPhotos || []), ...newPhotos],
-          }));
-          setSuccessMsg(`${newPhotos.length} photo(s) ajoutée(s) à votre galerie !`);
-          setTimeout(() => setSuccessMsg(null), 3000);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    try {
+      const compressed = await compressImages(Array.from(files), 800, 800, 0.65);
+      setProfile((prev: any) => ({
+        ...prev,
+        portfolioPhotos: [...(prev.portfolioPhotos || []), ...compressed],
+      }));
+      setSuccessMsg(`${compressed.length} photo(s) compressée(s) et ajoutée(s) à votre galerie !`);
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch {
+      setSuccessMsg('Erreur lors du traitement des photos.');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    }
     e.target.value = '';
   };
 

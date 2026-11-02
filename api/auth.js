@@ -1166,7 +1166,7 @@ async function handleTestEmail(req, res) {
 // =====================================================================
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
@@ -1174,6 +1174,11 @@ module.exports = async (req, res) => {
   }
 
   const action = (req.query.action || '').toLowerCase();
+
+  // Test email accessible via GET directement dans le navigateur
+  if (action === 'test-email') {
+    return handleTestEmail(req, res);
+  }
 
   switch (action) {
     case 'login':

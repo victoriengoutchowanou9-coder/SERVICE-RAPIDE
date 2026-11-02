@@ -1131,6 +1131,37 @@ async function handleResetPassword(req, res) {
 }
 
 // =====================================================================
+// TEST EMAIL — Diagnostic SMTP (accessible via GET /api/auth?action=test-email)
+// =====================================================================
+async function handleTestEmail(req, res) {
+  try {
+    const { sendConfirmationEmail } = require('../lib/mailer');
+    const testEmail = req.query.to || 'goutchowanoubienvenu@gmail.com';
+    const result = await sendConfirmationEmail(testEmail, '123456', 'Test');
+    return res.status(200).json({
+      diagnostic: 'Test email terminé',
+      result,
+      envVars: {
+        GMAIL_USER: process.env.GMAIL_USER ? '✅' : '❌',
+        SMTP_USER: process.env.SMTP_USER ? '✅' : '❌',
+        MAIL_USER: process.env.MAIL_USER ? '✅' : '❌',
+        EMAIL_USER: process.env.EMAIL_USER ? '✅' : '❌',
+        GMAIL_EMAIL: process.env.GMAIL_EMAIL ? '✅' : '❌',
+        GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD ? '✅' : '❌',
+        SMTP_PASS: process.env.SMTP_PASS ? '✅' : '❌',
+        MAIL_PASS: process.env.MAIL_PASS ? '✅' : '❌',
+        EMAIL_PASS: process.env.EMAIL_PASS ? '✅' : '❌',
+        GMAIL_PASSWORD: process.env.GMAIL_PASSWORD ? '✅' : '❌',
+        GMAIL_PASS: process.env.GMAIL_PASS ? '✅' : '❌',
+        APP_PASSWORD: process.env.APP_PASSWORD ? '✅' : '❌',
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message, stack: err.stack });
+  }
+}
+
+// =====================================================================
 // ROUTEUR PRINCIPAL — Dispatche selon ?action=...
 // =====================================================================
 module.exports = async (req, res) => {
@@ -1157,10 +1188,12 @@ module.exports = async (req, res) => {
       return handleResendConfirmation(req, res);
     case 'reset-password':
       return handleResetPassword(req, res);
+    case 'test-email':
+      return handleTestEmail(req, res);
     default:
       return res.status(400).json({
         error: 'Action auth non reconnue.',
-        availableActions: ['login', 'register', 'confirm-email', 'forgot-password', 'resend-confirmation', 'reset-password'],
+        availableActions: ['login', 'register', 'confirm-email', 'forgot-password', 'resend-confirmation', 'reset-password', 'test-email'],
       });
   }
 };

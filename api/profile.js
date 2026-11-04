@@ -65,7 +65,7 @@ async function handleGetProfile(req, res, userId) {
         department: user.department || '',
         commune: user.commune || '',
         city: user.city || '',
-        avatarUrl: user.avatarUrl || '',
+        avatarUrl: user.avatarUrl || providerProfile?.photoUrl || '',
         birthDate: user.birthDate || '',
         clientTrialExpiresAt: user.clientTrialExpiresAt,
         clientSubscriptionExpiresAt: user.clientSubscriptionExpiresAt,
@@ -156,7 +156,7 @@ async function handleChooseRole(req, res, userId) {
         department: user.department || '',
         commune: user.commune || '',
         city: user.city || '',
-        avatarUrl: user.avatarUrl || '',
+        avatarUrl: user.avatarUrl || providerProfile?.photoUrl || '',
         clientTrialExpiresAt: user.clientTrialExpiresAt,
         clientSubscriptionExpiresAt: user.clientSubscriptionExpiresAt,
         createdAt: user.createdAt,
@@ -179,9 +179,29 @@ async function handleUpdateProvider(req, res, userId) {
   try {
     await pg.connect();
     const existRes = await pg.query('SELECT id FROM public.provider_profiles WHERE "userId" = $1 LIMIT 1;', [userId]);
+    
+    // Si le profil prestataire n'existe pas encore, le créer d'abord (UPSERT)
     if (existRes.rows.length === 0) {
-      await pg.end();
-      return res.status(404).json({ error: 'Profil prestataire non trouvé.' });
+      await pg.query(`
+        INSERT INTO public.provider_profiles (
+          id, "userId", "singleName", "fullName", "serviceOffered", country, department, commune, city,
+          "directPhoneNumber", "whatsappNumber", availability, "receivesOnSite", "travelRequired",
+          "travelFee", "basePrice", "pricingUnit", "subscriptionExpiresAt", "isTrialUsed", "createdAt", "updatedAt"
+        ) VALUES (
+          gen_random_uuid(), $1, $2, $2, $3, $4, $5, $6, $7,
+          $8, $8, 'AVAILABLE'::availability_status_enum, true, false,
+          0, 5000, 'par prestation', NOW() + INTERVAL '30 days', false, NOW(), NOW()
+        );
+      `, [
+        userId,
+        b.singleName || 'Professionnel',
+        b.serviceOffered || 'Services Généraux',
+        b.country || 'Bénin',
+        b.department || '',
+        b.commune || '',
+        b.city || '',
+        b.directPhoneNumber || b.whatsappNumber || '',
+      ]);
     }
 
     // Construction dynamique de la clause SET
@@ -230,11 +250,40 @@ async function handleUpdateProvider(req, res, userId) {
     if (b.basePrice !== undefined) addRaw('basePrice', parseFloat(b.basePrice) || 5000);
     if (b.hourlyRate !== undefined) addRaw('hourlyRate', b.hourlyRate ? parseFloat(b.hourlyRate) : null);
     if (b.dailyRate !== undefined) addRaw('dailyRate', b.dailyRate ? parseFloat(b.dailyRate) : null);
-    if (b.availability !== undefined) addText('availability', b.availability);
+
+    // Disponibilité (enum PostgreSQL availability_status_enum)
+    if (b.availability === 'AVAILABLE' || b.availability === 'BUSY') {
+      setClauses.push(`"availability" = $${idx}::availability_status_enum`);
+      values.push(b.availability);
+      idx++;
+    }
 
     // Photo de profil (seulement si fournie — ne PAS écraser avec null)
     if (b.photoUrl !== undefined && b.photoUrl !== null) {
       addRaw('photoUrl', b.photoUrl);
+      // Synchroniser avec public.users.avatarUrl pour que le menu et profil soient cohérents
+      try {
+        await pg.query('UPDATE public.users SET "avatarUrl" = $1, "updatedAt" = NOW() WHERE id = $2;', [b.photoUrl, userId]);
+      } catch (uErr) {
+        console.warn('Sync avatarUrl to users warn:', uErr.message);
+      }
+    }
+
+    // Synchronisation nom avec public.users
+    if (b.fullName || b.singleName) {
+      try {
+        const sName = b.singleName || (b.fullName ? b.fullName.split(' ')[0] : '');
+        const lName = b.fullName && b.fullName.includes(' ') ? b.fullName.split(' ').slice(1).join(' ') : '';
+        await pg.query(`
+          UPDATE public.users SET
+            "firstName" = COALESCE(NULLIF($1, ''), "firstName"),
+            "lastName" = COALESCE(NULLIF($2, ''), "lastName"),
+            "updatedAt" = NOW()
+          WHERE id = $3;
+        `, [sName, lName, userId]);
+      } catch (nErr) {
+        console.warn('Sync names to users warn:', nErr.message);
+      }
     }
 
     // Tableaux JSONB (seulement si explicitement fournis dans le body)
@@ -260,7 +309,7 @@ async function handleUpdateProvider(req, res, userId) {
   } catch (err) {
     console.error('Erreur update-provider:', err);
     try { await pg.end(); } catch {}
-    return res.status(500).json({ error: 'Erreur lors de la sauvegarde du profil prestataire.' });
+    return res.status(500).json({ error: 'Erreur lors de la sauvegarde du profil prestataire : ' + err.message });
   }
 }
 
@@ -274,7 +323,7 @@ async function handleUpdateAvailability(req, res, userId) {
   const pg = getPgClient();
   try {
     await pg.connect();
-    await pg.query('UPDATE public.provider_profiles SET availability = $1, "updatedAt" = NOW() WHERE "userId" = $2;', [availability, userId]);
+    await pg.query('UPDATE public.provider_profiles SET availability = $1::availability_status_enum, "updatedAt" = NOW() WHERE "userId" = $2;', [availability, userId]);
     await pg.end();
     return res.status(200).json({ availability });
   } catch (err) {
@@ -356,7 +405,7 @@ async function handleUpdateClient(req, res, userId) {
         department: user.department || '',
         commune: user.commune || '',
         city: user.city || '',
-        avatarUrl: user.avatarUrl || '',
+        avatarUrl: user.avatarUrl || providerProfile?.photoUrl || '',
         birthDate: user.birthDate || '',
         clientTrialExpiresAt: user.clientTrialExpiresAt,
         clientSubscriptionExpiresAt: user.clientSubscriptionExpiresAt,

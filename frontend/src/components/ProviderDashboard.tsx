@@ -142,17 +142,19 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
 
   // Synchronisation du profil si mis à jour dans le parent
   useEffect(() => {
-    if (user?.providerProfile) {
+    if (user?.providerProfile || user?.avatarUrl) {
+      const pp = user.providerProfile || {};
       setProfile((prev: any) => ({
         ...prev,
-        ...user.providerProfile,
-        skills: Array.isArray(user.providerProfile.skills) ? user.providerProfile.skills : prev.skills,
-        interventionZones: Array.isArray(user.providerProfile.interventionZones) ? user.providerProfile.interventionZones : prev.interventionZones,
-        portfolioPhotos: Array.isArray(user.providerProfile.portfolioPhotos) ? user.providerProfile.portfolioPhotos : prev.portfolioPhotos,
-        pricingTiers: Array.isArray(user.providerProfile.pricingTiers) ? user.providerProfile.pricingTiers : prev.pricingTiers,
+        ...pp,
+        photoUrl: pp.photoUrl || user?.avatarUrl || prev.photoUrl || '',
+        skills: Array.isArray(pp.skills) ? pp.skills : prev.skills,
+        interventionZones: Array.isArray(pp.interventionZones) ? pp.interventionZones : prev.interventionZones,
+        portfolioPhotos: Array.isArray(pp.portfolioPhotos) ? pp.portfolioPhotos : prev.portfolioPhotos,
+        pricingTiers: Array.isArray(pp.pricingTiers) ? pp.pricingTiers : prev.pricingTiers,
       }));
     }
-  }, [user?.providerProfile]);
+  }, [user?.providerProfile, user?.avatarUrl]);
 
   // Récupérer l'historique réel des paiements
   useEffect(() => {
@@ -301,8 +303,9 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
     setLoading(true);
 
     try {
-      await supabaseBackend.updateProviderProfile(user?.id, profile);
-      if (onUpdateProviderProfile) onUpdateProviderProfile(profile);
+      const res = await supabaseBackend.updateProviderProfile(user?.id, profile);
+      const updated = res?.providerProfile || profile;
+      if (onUpdateProviderProfile) onUpdateProviderProfile(updated);
       setSuccessMsg("Profil professionnel, tarifs, photos et zones d'intervention enregistrés avec succès !");
     } catch (err: any) {
       console.error('Erreur sauvegarde profil:', err);
@@ -763,6 +766,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
       {activeSubTab === 'PROFILE' && (
         <form
           onSubmit={handleSaveProfile}
+          noValidate
           className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-5"
         >
           {/* SECTION PHOTO DE PROFIL */}
@@ -810,9 +814,10 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                 </label>
 
                 <input
-                  type="url"
+                  type="text"
                   placeholder="Ou collez l'URL d'une image en ligne"
-                  value={profile.photoUrl || ''}
+                  value={profile.photoUrl?.startsWith('data:') ? 'Photo sélectionnée (image enregistrée)' : (profile.photoUrl || '')}
+                  readOnly={Boolean(profile.photoUrl?.startsWith('data:'))}
                   onChange={(e) => setProfile({ ...profile, photoUrl: e.target.value })}
                   className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium focus:ring-2 focus:ring-brand-500"
                 />

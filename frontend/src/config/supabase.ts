@@ -639,12 +639,17 @@ export const supabaseBackend = {
 
     // Tentative via l'API serveur dédiée
     try {
+      const bodyStr = JSON.stringify(profileData);
+      console.log('[updateProviderProfile] Envoi vers API, taille body:', Math.round(bodyStr.length / 1024), 'KB');
+      
       const res = await fetch('/api/profile?action=update-provider', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(profileData),
+        body: bodyStr,
       });
       const data = await res.json();
+      console.log('[updateProviderProfile] Réponse API:', res.status, res.ok ? 'OK' : 'ERREUR', data.error || '');
+      
       if (res.ok && data.providerProfile) {
         // Persister dans localStorage pour survivre au refresh
         if (typeof window !== 'undefined') {
@@ -656,39 +661,14 @@ export const supabaseBackend = {
         }
         return data;
       }
-      if (!res.ok) throw new Error(data.error || 'Erreur lors de la sauvegarde du profil.');
+      if (!res.ok) {
+        console.error('[updateProviderProfile] Erreur API:', data.error);
+        throw new Error(data.error || 'Erreur lors de la sauvegarde du profil.');
+      }
     } catch (apiErr: any) {
-      if (apiErr.message && !apiErr.message.includes('fetch')) throw apiErr;
-      console.warn('API /api/profile?action=update-provider indisponible, fallback Supabase');
-    }
-
-    // Fallback Supabase client
-    if (isSupabaseConfigured) {
-      await supabase
-        .from('provider_profiles')
-        .update({
-          singleName: profileData.singleName,
-          fullName: profileData.fullName,
-          serviceOffered: profileData.serviceOffered,
-          country: profileData.country,
-          city: profileData.city,
-          department: profileData.department,
-          commune: profileData.commune,
-          receivesOnSite: Boolean(profileData.receivesOnSite),
-          travelRequired: Boolean(profileData.travelRequired),
-          travelFee: profileData.travelFee || 0,
-          basePrice: profileData.basePrice || 5000,
-          pricingUnit: profileData.pricingUnit || 'PRESTATION',
-          hourlyRate: profileData.hourlyRate || null,
-          dailyRate: profileData.dailyRate || null,
-          pricingTiers: profileData.pricingTiers || [],
-          portfolioPhotos: profileData.portfolioPhotos || [],
-          whatsappNumber: profileData.whatsappNumber,
-          directPhoneNumber: profileData.directPhoneNumber,
-          photoUrl: profileData.photoUrl,
-          updatedAt: new Date().toISOString(),
-        })
-        .eq('userId', userId);
+      console.error('[updateProviderProfile] Exception:', apiErr.message);
+      // Re-lancer l'erreur pour que le composant affiche le message
+      throw apiErr;
     }
   },
 

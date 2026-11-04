@@ -84,7 +84,8 @@ module.exports = async (req, res) => {
       SELECT 
         p.*,
         u."firstName",
-        u."lastName"
+        u."lastName",
+        u."avatarUrl"
       FROM public.provider_profiles p
       LEFT JOIN public.users u ON p."userId" = u.id
       ORDER BY 
@@ -114,7 +115,7 @@ module.exports = async (req, res) => {
         id: row.id,
         singleName: row.singleName || 'Professionnel',
         serviceOffered: row.serviceOffered || 'Services Généraux',
-        photoUrl: row.photoUrl || null,
+        photoUrl: row.photoUrl || row.avatarUrl || null,
         portfolioPhotos: Array.isArray(portfolio) ? portfolio : [],
         city: row.city || 'Cotonou',
         department: row.department || '',

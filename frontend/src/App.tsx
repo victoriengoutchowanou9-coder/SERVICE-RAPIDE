@@ -225,9 +225,23 @@ export function App() {
   };
 
   const handleUpdateProviderProfile = (updatedProfile: any) => {
+    // 1. Mettre à jour la liste des providers (pour la vue client)
     setProviders((prev) =>
       prev.map((p) => (p.id === updatedProfile.id ? { ...p, ...updatedProfile } : p))
     );
+    // 2. Mettre à jour authData.user.providerProfile (pour le menu, la photo, etc.)
+    const newAuthData = {
+      ...authData,
+      user: {
+        ...authData?.user,
+        providerProfile: { ...authData?.user?.providerProfile, ...updatedProfile },
+      },
+    };
+    setAuthData(newAuthData);
+    // 3. Persister dans localStorage pour survivre au refresh
+    try {
+      localStorage.setItem('sr_session', JSON.stringify(newAuthData));
+    } catch {}
   };
 
   const handleAuthSuccess = (data: any) => {

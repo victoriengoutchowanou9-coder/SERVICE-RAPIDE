@@ -376,14 +376,20 @@ export const FeedPosts: React.FC<FeedPostsProps> = ({
               <article className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={
-                        post.authorPhotoUrl ||
-                        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'
-                      }
-                      alt={post.authorSingleName}
-                      className="w-10 h-10 rounded-2xl object-cover ring-2 ring-emerald-500/20"
-                    />
+                    {post.authorPhotoUrl ? (
+                      <img
+                        src={post.authorPhotoUrl}
+                        alt={post.authorSingleName}
+                        className="w-10 h-10 rounded-2xl object-cover ring-2 ring-emerald-500/20 shrink-0"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-2xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center font-black text-sm ring-2 ring-emerald-500/20 shrink-0">
+                        {post.authorSingleName?.charAt(0).toUpperCase() || 'P'}
+                      </div>
+                    )}
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="text-xs font-black text-slate-900">{post.authorSingleName}</h4>

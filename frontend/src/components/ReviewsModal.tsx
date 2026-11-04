@@ -60,11 +60,20 @@ export const ReviewsModal: React.FC<ReviewsModalProps> = ({
       <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 my-auto animate-in fade-in zoom-in-95 space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-3">
-            <img
-              src={provider.photoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'}
-              alt={provider.singleName}
-              className="w-10 h-10 rounded-xl object-cover"
-            />
+            {provider.photoUrl ? (
+              <img
+                src={provider.photoUrl}
+                alt={provider.singleName}
+                className="w-10 h-10 rounded-xl object-cover shrink-0"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center font-black text-sm shrink-0">
+                {provider.singleName?.charAt(0).toUpperCase() || 'P'}
+              </div>
+            )}
             <div>
               <h3 className="text-sm font-black text-slate-900">
                 Avis & Notes sur {provider.singleName}

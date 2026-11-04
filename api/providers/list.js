@@ -96,7 +96,8 @@ module.exports = async (req, res) => {
     await client.end();
 
     const formattedProviders = provRes.rows.map((row) => {
-      const isUnlocked = unlockedIds.has(row.id);
+      const isSelf = Boolean(authUser && authUser.sub && authUser.sub === row.userId);
+      const isUnlocked = isSelf || unlockedIds.has(row.id);
       let portfolio = [];
       if (Array.isArray(row.portfolioPhotos)) {
         portfolio = row.portfolioPhotos;
@@ -113,6 +114,7 @@ module.exports = async (req, res) => {
 
       return {
         id: row.id,
+        userId: row.userId,
         singleName: row.singleName || 'Professionnel',
         serviceOffered: row.serviceOffered || 'Services Généraux',
         photoUrl: row.photoUrl || row.avatarUrl || null,

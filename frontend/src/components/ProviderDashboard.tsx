@@ -35,6 +35,7 @@ import {
   Search,
   Eye,
   ListFilter,
+  Lock,
 } from 'lucide-react';
 import { FeedPosts } from './FeedPosts';
 import { AdsSection } from './AdsSection';
@@ -88,8 +89,8 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
       availability: p.availability || 'AVAILABLE',
       receivesOnSite: p.receivesOnSite !== undefined ? p.receivesOnSite : true,
       travelRequired: p.travelRequired !== undefined ? p.travelRequired : false,
-      travelFee: p.travelFee || 0,
-      basePrice: p.basePrice || 5000,
+      travelFee: p.travelFee !== undefined && p.travelFee !== null ? p.travelFee : 0,
+      basePrice: p.basePrice !== undefined && p.basePrice !== null ? p.basePrice : 5000,
       pricingUnit: p.pricingUnit || 'par prestation',
       hourlyRate: p.hourlyRate ?? '',
       dailyRate: p.dailyRate ?? '',
@@ -142,6 +143,53 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
       });
     }
   }, [token, externalProviders]);
+
+  // Déblocage des contacts confrères / prestataires (protection stricte des numéros et WhatsApp)
+  const [unlockedProviderIds, setUnlockedProviderIds] = useState<string[]>([]);
+  const [unlockModalProvider, setUnlockModalProvider] = useState<ProviderItem | null>(null);
+  const [unlockMomoPhone, setUnlockMomoPhone] = useState(user?.phoneNumber || '');
+  const [unlockLoading, setUnlockLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      supabaseBackend.getContactUnlocks(user.id).then((unlocks) => {
+        if (unlocks && unlocks.length > 0) {
+          setUnlockedProviderIds(unlocks.map((u: any) => u.providerId));
+        }
+      });
+    }
+  }, [user?.id]);
+
+  const handleConfirmUnlockContact = async () => {
+    if (!unlockModalProvider) return;
+    const prov = unlockModalProvider;
+
+    if (prov.availability === 'BUSY') {
+      alert('Impossible : Ce prestataire est actuellement OCCUPÉ.');
+      return;
+    }
+
+    setUnlockLoading(true);
+    try {
+      const checkoutUrl = await saspayClient.createCheckoutSession({
+        amount: 1000,
+        customer_email: user?.email || 'prestataire@servicerapide.africa',
+        customer_name: `${user?.firstName || 'Prestataire'} ${user?.lastName || ''}`.trim() || 'Professionnel SERVICE RAPIDE',
+        customer_phone: unlockMomoPhone || '',
+        metadata: {
+          userId: user?.id,
+          providerId: prov.id,
+          action: 'CONTACT_UNLOCK',
+        },
+      });
+      window.location.href = checkoutUrl;
+      return;
+    } catch (err: any) {
+      alert('Erreur SasPay : ' + (err.message || 'Impossible de joindre le service de paiement'));
+      setUnlockLoading(false);
+      return;
+    }
+  };
 
   const [providerSearch, setProviderSearch] = useState('');
   const [providerCityFilter, setProviderCityFilter] = useState('');
@@ -327,8 +375,13 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
     setLoading(true);
 
     try {
-      const res = await supabaseBackend.updateProviderProfile(user?.id, profile);
-      const updated = res?.providerProfile || profile;
+      const toSave = {
+        ...profile,
+        basePrice: profile.basePrice === '' || isNaN(parseFloat(profile.basePrice)) ? 5000 : parseFloat(profile.basePrice),
+        travelFee: profile.travelFee === '' || isNaN(parseFloat(profile.travelFee)) ? 0 : parseFloat(profile.travelFee),
+      };
+      const res = await supabaseBackend.updateProviderProfile(user?.id, toSave);
+      const updated = res?.providerProfile || toSave;
       if (onUpdateProviderProfile) onUpdateProviderProfile(updated);
       setSuccessMsg("Profil professionnel, tarifs, photos et zones d'intervention enregistrés avec succès !");
     } catch (err: any) {
@@ -458,15 +511,20 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
       <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <div className="relative shrink-0">
-            <img
-              src={
-                profile.photoUrl ||
-                user?.avatarUrl ||
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
-              }
-              alt="Profil Prestataire"
-              className="w-12 h-12 rounded-2xl object-cover ring-2 ring-emerald-500/30"
-            />
+            {(profile.photoUrl || user?.avatarUrl) ? (
+              <img
+                src={profile.photoUrl || user?.avatarUrl}
+                alt="Profil Prestataire"
+                className="w-12 h-12 rounded-2xl object-cover ring-2 ring-emerald-500/30"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center font-black text-lg ring-2 ring-emerald-500/30">
+                {profile.singleName?.charAt(0).toUpperCase() || 'P'}
+              </div>
+            )}
             <span
               className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${
                 isAvailable ? 'bg-emerald-500' : 'bg-rose-500'
@@ -745,7 +803,8 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
               })
               .map((item) => {
                 const isAvail = item.availability === 'AVAILABLE';
-                const isSelf = item.id === profile.id || item.singleName === profile.singleName;
+                const isSelf = item.id === profile.id || item.singleName === profile.singleName || Boolean(user?.id && item.userId === user.id);
+                const isUnlocked = isSelf || Boolean(item.isContactUnlocked) || unlockedProviderIds.includes(item.id);
                 const totalEstimatedPrice = (item.basePrice || 5000) + (item.travelRequired ? item.travelFee || 0 : 0);
 
                 return (
@@ -757,17 +816,25 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                       {/* En-tête de la carte */}
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={
-                              item.photoUrl ||
-                              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'
-                            }
-                            alt={item.singleName}
-                            className="w-13 h-13 rounded-2xl object-cover ring-2 ring-slate-100 shadow-xs"
-                          />
+                          {item.photoUrl ? (
+                            <img
+                              src={item.photoUrl}
+                              alt={item.singleName}
+                              className="w-13 h-13 rounded-2xl object-cover ring-2 ring-slate-100 shadow-xs shrink-0"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-13 h-13 rounded-2xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center font-black text-base shadow-xs shrink-0">
+                              {item.singleName?.charAt(0).toUpperCase() || 'P'}
+                            </div>
+                          )}
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <h4 className="text-sm font-black text-slate-900">{item.singleName}</h4>
+                              <h4 className="text-sm font-black text-slate-900">
+                                {isUnlocked && item.contact?.fullName ? item.contact.fullName : item.singleName}
+                              </h4>
                               {isSelf && (
                                 <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-brand-100 text-brand-800">
                                   Vous
@@ -815,6 +882,45 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                       </div>
                     </div>
 
+                    {/* Bloc Coordonnées débloquées OU Masquage + Bouton déblocage SasPay 1 000 FCFA */}
+                    {isUnlocked ? (
+                      <div className="p-3 bg-brand-50/70 rounded-2xl border border-brand-200 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-black text-brand-900">
+                            {isSelf ? 'Votre contact (visible par vous)' : 'Coordonnées débloquées'}
+                          </span>
+                          <span className="text-[10px] font-bold text-brand-700 bg-brand-100 px-2 py-0.5 rounded-full">
+                            {isSelf ? 'Vous' : 'Actif'}
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                          <Phone className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                          <span>{item.contact?.directPhone || item.directPhoneNumber || 'Non renseigné'}</span>
+                        </div>
+                        {(item.contact?.whatsappNumber || item.whatsappNumber) && (
+                          <div className="text-xs font-bold text-emerald-700 flex items-center gap-2">
+                            <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>WhatsApp : {item.contact?.whatsappNumber || item.whatsappNumber}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-slate-100 space-y-2">
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
+                          <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>Coordonnées masquées • Déblocage unitaire à 1 000 FCFA</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUnlockModalProvider(item)}
+                          className="w-full py-2.5 px-4 rounded-xl text-xs font-black bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition flex items-center justify-center gap-2"
+                        >
+                          <Lock className="w-3.5 h-3.5" />
+                          <span>Débloquer ce contact (1 000 FCFA)</span>
+                        </button>
+                      </div>
+                    )}
+
                     {/* Bouton pour voir le profil complet et les photos */}
                     <button
                       type="button"
@@ -833,10 +939,75 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
           {selectedDetailProvider && (
             <ProviderDetailModal
               provider={selectedDetailProvider}
-              isUnlocked={true}
+              isUnlocked={
+                selectedDetailProvider.id === profile.id ||
+                selectedDetailProvider.singleName === profile.singleName ||
+                Boolean(user?.id && selectedDetailProvider.userId === user.id) ||
+                Boolean(selectedDetailProvider.isContactUnlocked) ||
+                unlockedProviderIds.includes(selectedDetailProvider.id)
+              }
               onClose={() => setSelectedDetailProvider(null)}
-              onUnlock={() => {}}
+              onUnlock={(prov) => {
+                setSelectedDetailProvider(null);
+                setUnlockModalProvider(prov);
+              }}
             />
+          )}
+
+          {/* MODALE DE DÉBLOCAGE CONTACT ENTRE PRESTATAIRES (1 000 FCFA VIA SASPAY) */}
+          {unlockModalProvider && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+              <div className="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-auto">
+                <h4 className="text-base font-black text-slate-900 mb-1">Mise en Contact Sécurisée</h4>
+                <p className="text-xs text-slate-500 mb-4">
+                  Prestataire : <strong>{unlockModalProvider.singleName}</strong> ({unlockModalProvider.serviceOffered})
+                </p>
+
+                <div className="space-y-3 mb-4">
+                  <div className="p-3 bg-brand-50 rounded-2xl border border-brand-200 text-brand-900 text-xs">
+                    <p className="font-bold">📱 Déblocage du contact confrère</p>
+                    <p className="text-[11px] text-brand-800 mt-0.5">
+                      Les coordonnées directes et WhatsApp de ce professionnel sont confidentielles. Validez le paiement de 1 000 FCFA pour y accéder.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-bold p-2.5 bg-slate-50 rounded-xl">
+                    <span>Frais de mise en relation :</span>
+                    <span className="text-brand-600 font-black">1 000 FCFA</span>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Numéro Mobile Money (pour validation SasPay)
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="Ex: 0197000000"
+                      value={unlockMomoPhone}
+                      onChange={(e) => setUnlockMomoPhone(e.target.value)}
+                      className="w-full min-h-[42px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    disabled={unlockLoading}
+                    onClick={() => setUnlockModalProvider(null)}
+                    className="inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex-1"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    disabled={unlockLoading}
+                    onClick={handleConfirmUnlockContact}
+                    className="inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition flex-1"
+                  >
+                    {unlockLoading ? 'Redirection SasPay...' : 'Payer 1 000 FCFA'}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -1063,14 +1234,20 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
           {/* SECTION PHOTO DE PROFIL */}
           <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
             <div className="relative group shrink-0">
-              <img
-                src={
-                  profile.photoUrl ||
-                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'
-                }
-                alt="Photo prestataire"
-                className="w-20 h-20 rounded-2xl object-cover ring-4 ring-white shadow-md"
-              />
+              {profile.photoUrl ? (
+                <img
+                  src={profile.photoUrl}
+                  alt="Photo prestataire"
+                  className="w-20 h-20 rounded-2xl object-cover ring-4 ring-white shadow-md"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center font-black text-2xl ring-4 ring-white shadow-md">
+                  {profile.singleName?.charAt(0).toUpperCase() || 'P'}
+                </div>
+              )}
               <label
                 htmlFor="prov-photo-input"
                 className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-md cursor-pointer hover:bg-brand-700 transition"
@@ -1410,8 +1587,8 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                   min="500"
                   step="500"
                   required
-                  value={profile.basePrice || 5000}
-                  onChange={(e) => setProfile({ ...profile, basePrice: parseFloat(e.target.value) || 0 })}
+                  value={profile.basePrice ?? ''}
+                  onChange={(e) => setProfile({ ...profile, basePrice: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                   className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2 text-xs font-black text-slate-900 focus:ring-2 focus:ring-brand-500"
                   placeholder="Ex: 5000, 15000..."
                 />
@@ -1669,8 +1846,8 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
                           type="number"
                           min="0"
                           step="500"
-                          value={profile.travelFee || 0}
-                          onChange={(e) => setProfile({ ...profile, travelFee: parseFloat(e.target.value) || 0 })}
+                          value={profile.travelFee ?? ''}
+                          onChange={(e) => setProfile({ ...profile, travelFee: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                           className="w-36 bg-white border border-emerald-300 rounded-xl px-3 py-1.5 text-xs font-black text-slate-900 focus:ring-2 focus:ring-brand-500"
                         />
                         <span className="text-xs font-bold text-slate-600">FCFA</span>

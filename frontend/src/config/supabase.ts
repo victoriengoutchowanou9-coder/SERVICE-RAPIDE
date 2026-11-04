@@ -655,7 +655,11 @@ export const supabaseBackend = {
         if (typeof window !== 'undefined') {
           try {
             const session = JSON.parse(localStorage.getItem('sr_session') || '{}');
-            session.user = { ...session.user, providerProfile: data.providerProfile };
+            session.user = {
+              ...session.user,
+              avatarUrl: data.providerProfile.photoUrl || session.user?.avatarUrl,
+              providerProfile: data.providerProfile,
+            };
             localStorage.setItem('sr_session', JSON.stringify(session));
           } catch {}
         }

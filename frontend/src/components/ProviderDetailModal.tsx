@@ -48,14 +48,20 @@ export const ProviderDetailModal: React.FC<ProviderDetailModalProps> = ({
         <div className="flex items-start justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-4">
             <div className="relative shrink-0">
-              <img
-                src={
-                  provider.photoUrl ||
-                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'
-                }
-                alt={provider.singleName}
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-2 ring-slate-100 shadow-sm"
-              />
+              {provider.photoUrl ? (
+                <img
+                  src={provider.photoUrl}
+                  alt={provider.singleName}
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-2 ring-slate-100 shadow-sm"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center font-black text-2xl ring-2 ring-slate-100 shadow-sm">
+                  {provider.singleName?.charAt(0).toUpperCase() || 'P'}
+                </div>
+              )}
               <span
                 className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full ring-2 ring-white ${
                   isBusy ? 'bg-rose-600' : 'bg-emerald-600 animate-pulse'

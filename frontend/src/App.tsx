@@ -243,6 +243,7 @@ export function App() {
       ...authData,
       user: {
         ...authData?.user,
+        avatarUrl: updatedProfile.photoUrl || authData?.user?.avatarUrl,
         providerProfile: { ...authData?.user?.providerProfile, ...updatedProfile },
       },
     };

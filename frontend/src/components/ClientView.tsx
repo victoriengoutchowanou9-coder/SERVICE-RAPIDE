@@ -474,14 +474,20 @@ export const ClientView: React.FC<ClientViewProps> = ({
                           onClick={() => setSelectedDetailProvider(item)}
                           title="Cliquez pour voir le profil complet et les photos"
                         >
-                          <img
-                            src={
-                              item.photoUrl ||
-                              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'
-                            }
-                            alt={item.singleName}
-                            className="w-14 h-14 rounded-2xl object-cover ring-2 ring-slate-100 shadow-xs group-hover:ring-brand-500 transition"
-                          />
+                          {item.photoUrl ? (
+                            <img
+                              src={item.photoUrl}
+                              alt={item.singleName}
+                              className="w-14 h-14 rounded-2xl object-cover ring-2 ring-slate-100 shadow-xs group-hover:ring-brand-500 transition"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-14 h-14 rounded-2xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center font-black text-lg ring-2 ring-slate-100 shadow-xs group-hover:ring-brand-500 transition">
+                              {item.singleName?.charAt(0).toUpperCase() || 'P'}
+                            </div>
+                          )}
                         </div>
 
                         <div

@@ -57,6 +57,7 @@ export interface PricingTier {
 
 export interface ProviderItem {
   id: string;
+  userId?: string;
   singleName: string;
   photoUrl?: string; // Photo de profil du prestataire
   portfolioPhotos?: string[]; // Galerie de photos de ses réalisations
@@ -87,6 +88,8 @@ export interface ProviderItem {
   isContactUnlocked: boolean;
   unlockId: string | null;
   refundStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
+  directPhoneNumber?: string;
+  whatsappNumber?: string;
   contact: {
     directPhone: string;
     whatsappNumber: string;

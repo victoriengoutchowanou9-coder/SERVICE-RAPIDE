@@ -96,6 +96,9 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                 src={user.avatarUrl || user.providerProfile?.photoUrl}
                 alt="Avatar"
                 className="w-11 h-11 rounded-2xl border border-brand-200 object-cover shrink-0 shadow-2xs"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
               />
             ) : (
               <div className="w-11 h-11 rounded-2xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center font-black text-base shrink-0 shadow-2xs">

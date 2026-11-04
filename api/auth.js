@@ -146,15 +146,11 @@ async function handleLogin(req, res) {
         return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect.' });
       }
 
-      // Contrôle de confirmation d'email obligatoire
-      const isDevAdminFallback = (pUser.email && pUser.email.toLowerCase() === 'developer_admin@servicerapide.africa') || pUser.role === 'ADMIN';
-      if (!isDevAdminFallback && !pUser.email_confirmed_at) {
-        await pgClient.end();
-        return res.status(403).json({
-          error: "Votre adresse e-mail n'a pas encore été confirmée. Veuillez valider votre e-mail avant de vous connecter.",
-          requiresEmailConfirmation: true,
-          email: pUser.email,
-        });
+      // Auto-confirmation de l'email si non confirmé (inscription directe sans validation email)
+      if (!pUser.email_confirmed_at) {
+        try {
+          await pgClient.query('UPDATE auth.users SET email_confirmed_at = NOW() WHERE id = $1;', [pUser.id]);
+        } catch {}
       }
 
       // Profil prestataire éventuel
@@ -226,15 +222,11 @@ async function handleLogin(req, res) {
       return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect.' });
     }
 
-    // Contrôle de confirmation d'email obligatoire
-    const isDevAdmin = (row.email && row.email.toLowerCase() === 'developer_admin@servicerapide.africa') || row.role === 'ADMIN';
-    if (!isDevAdmin && !row.email_confirmed_at) {
-      await pgClient.end();
-      return res.status(403).json({
-        error: "Votre adresse e-mail n'a pas encore été confirmée. Veuillez valider votre e-mail avant de vous connecter.",
-        requiresEmailConfirmation: true,
-        email: row.email,
-      });
+    // Auto-confirmation de l'email si non confirmé (inscription directe sans validation email)
+    if (!row.email_confirmed_at) {
+      try {
+        await pgClient.query('UPDATE auth.users SET email_confirmed_at = NOW() WHERE id = $1;', [row.id]);
+      } catch {}
     }
 
     // Profil prestataire éventuel
@@ -376,10 +368,7 @@ async function handleRegister(req, res) {
     const userIdRes = await pgClient.query(`SELECT gen_random_uuid() AS id;`);
     const newUserId = userIdRes.rows[0].id;
 
-    // Génération du code de confirmation à 6 chiffres
-    const confirmationToken = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // 1. Insertion dans auth.users avec validation d'email requise (email_confirmed_at = NULL)
+    // 1. Insertion dans auth.users avec confirmation automatique directe (sans validation d'email requise)
     try {
       await pgClient.query(`
         INSERT INTO auth.users (
@@ -401,17 +390,17 @@ async function handleRegister(req, res) {
           '00000000-0000-0000-0000-000000000000',
           $2,
           crypt($3, gen_salt('bf')),
+          NOW(),
           NULL,
-          $4,
           NOW(),
           '{"provider":"email","providers":["email"]}',
-          json_build_object('firstName', $5::text, 'lastName', $6::text, 'role', $7::text),
+          json_build_object('firstName', $4::text, 'lastName', $5::text, 'role', $6::text),
           NOW(),
           NOW(),
           'authenticated',
           'authenticated'
         );
-      `, [newUserId, cleanEmail, password, confirmationToken, firstName.trim(), lastName.trim(), role]);
+      `, [newUserId, cleanEmail, password, firstName.trim(), lastName.trim(), role]);
     } catch (authErr) {
       console.warn('Note auth.users insert:', authErr.message);
     }
@@ -555,14 +544,15 @@ async function handleRegister(req, res) {
 
     await pgClient.end();
 
-    // Envoi effectif de l'e-mail de confirmation à l'utilisateur
-    let emailDelivery = { sent: false };
-    try {
-      const { sendConfirmationEmail } = require('../lib/mailer');
-      emailDelivery = await sendConfirmationEmail(createdUser.email, confirmationToken, createdUser.firstName);
-    } catch (mErr) {
-      console.warn('Erreur envoi mailer register:', mErr.message);
-    }
+    const jwtSecret = process.env.JWT_SECRET || 'super_secret_jwt_key_service_rapide_afrique_2025_secure';
+    const accessToken = createJwtToken(
+      {
+        sub: createdUser.id,
+        email: createdUser.email,
+        role: createdUser.role,
+      },
+      jwtSecret
+    );
 
     // Journalisation d'audit réelle dans Supabase system_audit_logs
     try {
@@ -580,7 +570,6 @@ async function handleRegister(req, res) {
           fullName: `${createdUser.firstName} ${createdUser.lastName}`,
           country: createdUser.country,
           city: createdUser.city,
-          emailDeliverySent: emailDelivery.sent,
         },
         req,
       });
@@ -588,24 +577,21 @@ async function handleRegister(req, res) {
       console.warn('Erreur audit register:', auditErr.message);
     }
 
-    const message = emailDelivery.sent
-      ? `Compte créé avec succès ! Un e-mail contenant votre code de confirmation a été envoyé à ${createdUser.email}.`
-      : `Compte créé avec succès ! Le code de confirmation à 6 chiffres a été préparé pour ${createdUser.email}. Si vous ne le recevez pas, vérifiez vos spams ou demandez un renvoi.`;
-
     return res.status(201).json({
-      message,
-      requiresOtp: true,
-      requiresEmailConfirmation: true,
+      message: 'Compte créé avec succès ! Bienvenue sur SERVICE RAPIDE.',
+      accessToken,
+      requiresOtp: false,
+      requiresEmailConfirmation: false,
       email: createdUser.email,
-      emailSent: emailDelivery.sent,
-      devCode: !emailDelivery.sent ? confirmationToken : undefined,
       user: {
         id: createdUser.id,
         email: createdUser.email,
         role: createdUser.role,
+        identifier: createdUser.identifier,
         firstName: createdUser.firstName,
         lastName: createdUser.lastName,
         phoneNumber: createdUser.phoneNumber,
+        avatarUrl: createdUser.avatarUrl || createdProviderProfile?.photoUrl || '',
         country: createdUser.country,
         countryCode: createdUser.countryCode,
         department: createdUser.department,

@@ -16,6 +16,7 @@ import {
   HelpCircle,
   Sparkles,
   Download,
+  Clock,
 } from 'lucide-react';
 
 interface NavigationDrawerProps {
@@ -205,6 +206,19 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             <>
               <button
                 type="button"
+                onClick={() => handleItemClick('PROVIDERS')}
+                className={`w-full py-2.5 px-3 rounded-2xl text-xs font-bold transition flex items-center gap-3 ${
+                  currentSection === 'PROVIDERS'
+                    ? 'bg-brand-50 text-brand-700 font-black shadow-2xs'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <Briefcase className="w-4 h-4 text-brand-600" />
+                <span>Prestataires Disponibles</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => handleItemClick('MISSIONS')}
                 className={`w-full py-2.5 px-3 rounded-2xl text-xs font-bold transition flex items-center gap-3 ${
                   currentSection === 'MISSIONS'
@@ -212,7 +226,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                     : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
-                <Briefcase className="w-4 h-4 text-brand-600" />
+                <Clock className="w-4 h-4 text-amber-600" />
                 <span>Demandes de Missions</span>
               </button>
 

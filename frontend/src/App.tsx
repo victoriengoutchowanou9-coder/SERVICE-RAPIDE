@@ -127,6 +127,15 @@ export function App() {
   // Prestataires disponibles
   const [providers, setProviders] = useState<ProviderItem[]>([]);
 
+  // Chargement des prestataires enregistrés (accessible aux clients ET prestataires)
+  useEffect(() => {
+    supabaseBackend.getPublicProviders(authData?.accessToken || '').then((provs) => {
+      if (provs && provs.length > 0) {
+        setProviders(provs);
+      }
+    });
+  }, [authData?.accessToken]);
+
   // Demandes de services
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
 
@@ -379,6 +388,7 @@ export function App() {
             user={user}
             token={token}
             posts={posts}
+            providers={providers}
             serviceRequests={serviceRequests}
             onAddPost={handleAddPost}
             onUpdateRequestStatus={handleUpdateRequestStatus}

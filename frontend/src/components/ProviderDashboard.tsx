@@ -32,10 +32,14 @@ import {
   Trash2,
   Layers,
   DollarSign,
+  Search,
+  Eye,
+  ListFilter,
 } from 'lucide-react';
 import { FeedPosts } from './FeedPosts';
 import { AdsSection } from './AdsSection';
-import { PostItem, ServiceRequest, ReviewItem, PricingTier } from '../types';
+import { ProviderDetailModal } from './ProviderDetailModal';
+import { PostItem, ServiceRequest, ReviewItem, PricingTier, ProviderItem } from '../types';
 import { supabaseBackend } from '../config/supabase';
 import { saspayClient } from '../config/saspay';
 import { GeoCascadeSelect } from './GeoCascadeSelect';
@@ -45,6 +49,7 @@ interface ProviderDashboardProps {
   user: any;
   token: string;
   posts: PostItem[];
+  providers?: ProviderItem[];
   serviceRequests?: ServiceRequest[];
   onAddPost: (post: Partial<PostItem>) => void;
   onUpdateRequestStatus?: (requestId: string, status: 'ACCEPTED' | 'REJECTED' | 'COMPLETED' | 'PAID') => void;
@@ -57,6 +62,7 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
   user,
   token,
   posts,
+  providers: externalProviders,
   serviceRequests: externalRequests,
   onAddPost,
   onUpdateRequestStatus,
@@ -98,10 +104,10 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
     };
   });
 
-  const [activeSubTab, setActiveSubTab] = useState<'MISSIONS' | 'PROFILE' | 'BILLING' | 'FEED' | 'ADS'>(() => {
+  const [activeSubTab, setActiveSubTab] = useState<'MISSIONS' | 'PROFILE' | 'BILLING' | 'FEED' | 'ADS' | 'PROVIDERS'>(() => {
     try {
       const saved = sessionStorage.getItem('sr_provider_tab');
-      if (saved === 'MISSIONS' || saved === 'PROFILE' || saved === 'BILLING' || saved === 'FEED' || saved === 'ADS') return saved;
+      if (saved === 'MISSIONS' || saved === 'PROFILE' || saved === 'BILLING' || saved === 'FEED' || saved === 'ADS' || saved === 'PROVIDERS') return saved;
     } catch {}
     return 'MISSIONS';
   });
@@ -118,11 +124,29 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
       activeSectionOverride === 'PROFILE' ||
       activeSectionOverride === 'FEED' ||
       activeSectionOverride === 'ADS' ||
-      activeSectionOverride === 'BILLING'
+      activeSectionOverride === 'BILLING' ||
+      activeSectionOverride === 'PROVIDERS'
     ) {
       setActiveSubTab(activeSectionOverride as any);
     }
   }, [activeSectionOverride]);
+
+  // Prestataires disponibles pour consultation par les pairs
+  const [internalProviders, setInternalProviders] = useState<ProviderItem[]>(externalProviders || []);
+  const allProviders = (externalProviders && externalProviders.length > 0) ? externalProviders : internalProviders;
+
+  useEffect(() => {
+    if (!externalProviders || externalProviders.length === 0) {
+      supabaseBackend.getPublicProviders(token).then((provs) => {
+        if (provs && provs.length > 0) setInternalProviders(provs);
+      });
+    }
+  }, [token, externalProviders]);
+
+  const [providerSearch, setProviderSearch] = useState('');
+  const [providerCityFilter, setProviderCityFilter] = useState('');
+  const [availableOnlyFilter, setAvailableOnlyFilter] = useState(false);
+  const [selectedDetailProvider, setSelectedDetailProvider] = useState<ProviderItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [showSubModal, setShowSubModal] = useState(false);
@@ -549,6 +573,273 @@ export const ProviderDashboard: React.FC<ProviderDashboardProps> = ({
               <span>{successMsg}</span>
             </div>
           )}
+
+      {/* BARRE D'ONGLETS PRESTATAIRE */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('MISSIONS')}
+          className={`py-2 px-3.5 rounded-2xl text-xs font-black transition flex items-center gap-2 shrink-0 ${
+            activeSubTab === 'MISSIONS'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+          }`}
+        >
+          <Briefcase className="w-4 h-4 text-brand-600" />
+          <span>Demandes de Missions</span>
+          {providerMissions.length > 0 && (
+            <span className="bg-brand-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+              {providerMissions.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('PROVIDERS')}
+          className={`py-2 px-3.5 rounded-2xl text-xs font-black transition flex items-center gap-2 shrink-0 ${
+            activeSubTab === 'PROVIDERS'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+          }`}
+        >
+          <Users className="w-4 h-4 text-emerald-600" />
+          <span>Prestataires Disponibles</span>
+          <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
+            {allProviders.filter(p => p.availability === 'AVAILABLE').length} en ligne
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('PROFILE')}
+          className={`py-2 px-3.5 rounded-2xl text-xs font-black transition flex items-center gap-2 shrink-0 ${
+            activeSubTab === 'PROFILE'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+          }`}
+        >
+          <User className="w-4 h-4 text-slate-500" />
+          <span>Mon Entreprise & Profil</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('FEED')}
+          className={`py-2 px-3.5 rounded-2xl text-xs font-black transition flex items-center gap-2 shrink-0 ${
+            activeSubTab === 'FEED'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+          }`}
+        >
+          <Rss className="w-4 h-4 text-blue-500" />
+          <span>Réalisations & Fil</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('BILLING')}
+          className={`py-2 px-3.5 rounded-2xl text-xs font-black transition flex items-center gap-2 shrink-0 ${
+            activeSubTab === 'BILLING'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+          }`}
+        >
+          <CreditCard className="w-4 h-4 text-indigo-500" />
+          <span>Abonnement</span>
+        </button>
+      </div>
+
+      {/* ONGLET NOUVEAU : PRESTATAIRES DISPONIBLES (RÉSEAU & COLLÈGUES) */}
+      {activeSubTab === 'PROVIDERS' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+                <Users className="w-4 h-4 text-emerald-600" />
+                <span>Tous les Prestataires Disponibles ({allProviders.length})</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Consultez le réseau de professionnels actifs, leurs spécialités, leurs zones et leurs disponibilités en direct.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl border border-emerald-200 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{allProviders.filter(p => p.availability === 'AVAILABLE').length} disponibles maintenant</span>
+              </span>
+            </div>
+          </div>
+
+          {/* BARRE DE RECHERCHE & FILTRES */}
+          <div className="p-4 bg-white rounded-3xl border border-slate-200/90 shadow-xs space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="sm:col-span-2 relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Rechercher par métier, nom, spécialité..."
+                  value={providerSearch}
+                  onChange={(e) => setProviderSearch(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-3.5 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-emerald-500 transition"
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  placeholder="Filtrer par ville..."
+                  value={providerCityFilter}
+                  onChange={(e) => setProviderCityFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-emerald-500 transition"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setAvailableOnlyFilter(!availableOnlyFilter)}
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
+                  availableOnlyFilter
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${availableOnlyFilter ? 'bg-white' : 'bg-emerald-500'}`} />
+                <span>Afficher uniquement les disponibles</span>
+              </button>
+
+              <span className="text-[11px] font-medium text-slate-400">
+                {
+                  allProviders.filter((p) => {
+                    const matchQuery =
+                      !providerSearch.trim() ||
+                      p.singleName.toLowerCase().includes(providerSearch.toLowerCase()) ||
+                      p.serviceOffered.toLowerCase().includes(providerSearch.toLowerCase());
+                    const matchCity =
+                      !providerCityFilter.trim() ||
+                      p.city.toLowerCase().includes(providerCityFilter.toLowerCase());
+                    const matchAvail = !availableOnlyFilter || p.availability === 'AVAILABLE';
+                    return matchQuery && matchCity && matchAvail;
+                  }).length
+                }{' '}
+                prestataire(s) trouvé(s)
+              </span>
+            </div>
+          </div>
+
+          {/* GRILLE DES CARTES PRESTATAIRES */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {allProviders
+              .filter((p) => {
+                const matchQuery =
+                  !providerSearch.trim() ||
+                  p.singleName.toLowerCase().includes(providerSearch.toLowerCase()) ||
+                  p.serviceOffered.toLowerCase().includes(providerSearch.toLowerCase());
+                const matchCity =
+                  !providerCityFilter.trim() ||
+                  p.city.toLowerCase().includes(providerCityFilter.toLowerCase());
+                const matchAvail = !availableOnlyFilter || p.availability === 'AVAILABLE';
+                return matchQuery && matchCity && matchAvail;
+              })
+              .map((item) => {
+                const isAvail = item.availability === 'AVAILABLE';
+                const isSelf = item.id === profile.id || item.singleName === profile.singleName;
+                const totalEstimatedPrice = (item.basePrice || 5000) + (item.travelRequired ? item.travelFee || 0 : 0);
+
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs hover:shadow-md transition flex flex-col justify-between gap-4"
+                  >
+                    <div>
+                      {/* En-tête de la carte */}
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={
+                              item.photoUrl ||
+                              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'
+                            }
+                            alt={item.singleName}
+                            className="w-13 h-13 rounded-2xl object-cover ring-2 ring-slate-100 shadow-xs"
+                          />
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="text-sm font-black text-slate-900">{item.singleName}</h4>
+                              {isSelf && (
+                                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-brand-100 text-brand-800">
+                                  Vous
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-bold text-emerald-600 mt-0.5">{item.serviceOffered}</p>
+                          </div>
+                        </div>
+
+                        {/* Badge de disponibilité */}
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1.5 ${
+                            isAvail
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              : 'bg-rose-50 text-rose-800 border border-rose-200'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${isAvail ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                          <span>{isAvail ? 'Disponible' : 'Occupé'}</span>
+                        </span>
+                      </div>
+
+                      {/* Localisation */}
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mb-3">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{item.city}{item.department ? `, ${item.department}` : ''}{item.country ? ` (${item.country})` : ''}</span>
+                      </div>
+
+                      {/* Bloc Prix & Déplacement */}
+                      <div className="p-3 bg-emerald-50/60 rounded-2xl border border-emerald-100 space-y-1 mb-3">
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-[10px] font-black uppercase text-emerald-900 tracking-wider">
+                            Tarif indicatif
+                          </span>
+                          <span className="text-sm font-black text-emerald-900">
+                            {totalEstimatedPrice.toLocaleString('fr-FR')} FCFA
+                            <span className="text-[10px] font-normal text-slate-500 ml-1">/ {item.pricingUnit || 'prestation'}</span>
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-emerald-100">
+                          <span>Sur place : {item.receivesOnSite ? 'Oui' : 'Non'}</span>
+                          <span>Déplacement : {item.travelRequired ? `${(item.travelFee || 0).toLocaleString('fr-FR')} FCFA` : 'Non'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bouton pour voir le profil complet et les photos */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDetailProvider(item)}
+                      className="w-full py-2.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Consulter le profil & photos ({(item.portfolioPhotos || []).length})</span>
+                    </button>
+                  </div>
+                );
+              })}
+          </div>
+
+          {/* MODALE DE DÉTAIL POUR LE PRESTATAIRE */}
+          {selectedDetailProvider && (
+            <ProviderDetailModal
+              provider={selectedDetailProvider}
+              isUnlocked={true}
+              onClose={() => setSelectedDetailProvider(null)}
+              onUnlock={() => {}}
+            />
+          )}
+        </div>
+      )}
 
           {/* ONGLET 1 : DEMANDES DE MISSIONS REÇUES (IMMEDIAT + PROGRAMME) */}
       {activeSubTab === 'MISSIONS' && (

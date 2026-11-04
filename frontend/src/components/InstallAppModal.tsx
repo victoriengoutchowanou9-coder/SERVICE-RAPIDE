@@ -23,10 +23,14 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
   const [activeTab, setActiveTab] = useState<'ANDROID' | 'IOS' | 'PC'>('ANDROID');
 
   useEffect(() => {
-    // Détection si l'application fonctionne déjà en mode PWA autonome
+    // Détection si l'application fonctionne déjà en mode PWA autonome ou déjà installée
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
+      window.matchMedia('(display-mode: fullscreen)').matches ||
+      window.matchMedia('(display-mode: minimal-ui)').matches ||
+      (window.navigator as any).standalone === true ||
+      Boolean(document.referrer?.includes('android-app://')) ||
+      (typeof localStorage !== 'undefined' && localStorage.getItem('sr_pwa_installed') === 'true');
     if (isStandalone) {
       setIsInstalled(true);
     }
@@ -54,6 +58,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
 
     // Événement après installation
     const handleAppInstalled = () => {
+      try { localStorage.setItem('sr_pwa_installed', 'true'); } catch {}
       setIsInstalled(true);
       setDeferredPrompt(null);
     };
@@ -71,6 +76,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
       prompt.prompt();
       const choiceResult = await prompt.userChoice;
       if (choiceResult.outcome === 'accepted') {
+        try { localStorage.setItem('sr_pwa_installed', 'true'); } catch {}
         setIsInstalled(true);
         setDeferredPrompt(null);
       }

@@ -333,65 +333,29 @@ export const ClientView: React.FC<ClientViewProps> = ({
       {/* ONGLET 1 : RECHERCHE NATURELLE & LISTE DES PRESTATAIRES */}
       {activeTab === 'PROVIDERS' && (
         <div className="space-y-5">
-          {/* BANNIÈRE DE RECHERCHE NATURELLE : « Je cherche tel service maintenant près de moi. » */}
-          <div className="bg-gradient-to-r from-brand-600 via-brand-700 to-amber-600 rounded-3xl p-5 sm:p-6 text-white shadow-lg space-y-4">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-xs px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
-                <Zap className="w-3 h-3 text-amber-300" />
-                <span>Recherche Instantanée Panafricaine</span>
-              </div>
-              <h2 className="text-lg sm:text-2xl font-black">
-                « Je cherche tel service maintenant près de moi. »
-              </h2>
-              <p className="text-xs text-white/85">
-                Exprimez simplement votre besoin pour trouver un artisan qualifié disponible immédiatement ou programmer un rendez-vous.
-              </p>
-            </div>
-
+          {/* BARRE DE RECHERCHE & FILTRES */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+            {/* Champ de recherche intégré */}
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Ex: Je cherche un réparateur de climatiseur maintenant près de Cocody..."
+                placeholder="Rechercher un service, un prestataire, une ville..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-white text-slate-900 rounded-2xl pl-11 pr-4 py-3 text-xs sm:text-sm font-semibold shadow-md focus:ring-4 focus:ring-amber-400/50 outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none transition"
               />
-            </div>
-
-            {/* Suggestions en un clic */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-              <span className="text-[11px] font-bold text-white/75 mr-1">Exemples rapides :</span>
-              {[
-                { label: '⚡ Climatisation maintenant', q: 'Climatisation' },
-                { label: '⚡ Électricien d’urgence', q: 'Électricien' },
-                { label: '⚡ Plombier fuite d’eau', q: 'Plombier' },
-                { label: '📅 Coiffure à domicile', q: 'Coiffure' },
-                { label: '🚗 Dépannage auto', q: 'Mécanique' },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => setSearchTerm(item.q)}
-                  className="text-[11px] font-bold bg-white/15 hover:bg-white/25 border border-white/20 rounded-xl px-2.5 py-1 transition"
-                >
-                  {item.label}
-                </button>
-              ))}
               {searchTerm && (
                 <button
                   type="button"
                   onClick={() => setSearchTerm('')}
-                  className="text-[11px] font-bold bg-black/20 hover:bg-black/30 text-white rounded-xl px-2.5 py-1 transition ml-auto"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 hover:text-slate-700 transition"
                 >
                   Effacer
                 </button>
               )}
             </div>
-          </div>
 
-          {/* BARRE DE FILTRES & COMPARATEUR DE PRIX */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
               {/* Filtre Ville / Quartier */}
               <div className="w-full sm:w-64">

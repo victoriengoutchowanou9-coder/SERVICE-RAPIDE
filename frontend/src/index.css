@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+il@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -138,4 +138,53 @@ body {
   background: var(--sr-check); color: #fff;
   display: inline-flex; align-items: center; justify-content: center;
 }
+/* ===== Ajustement mobile ===== */
+html {
+  font-size: 14px;
+}
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
 
+.sr-card {
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.sr-btn {
+  font-size: 14px;
+  padding: 12px 20px;
+}
+
+.sr-btn-outline {
+  font-size: 14px;
+  padding: 11px 18px;
+}
+
+.sr-input {
+  font-size: 14px;
+  padding: 11px 16px;
+  border-radius: 14px;
+}
+
+.sr-badge {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.sr-icon-btn {
+  width: 44px;
+  height: 44px;
+}
+
+.sr-mint-box {
+  padding: 12px;
+  border-radius: 16px;
+}
+
+.sr-tab {
+  padding: 10px 18px;
+  font-size: 14px;
+}

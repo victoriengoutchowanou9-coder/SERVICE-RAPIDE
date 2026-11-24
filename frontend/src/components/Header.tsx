@@ -56,7 +56,6 @@ export const Header: React.FC<HeaderProps> = ({
   isAuthPage = false,
   onToggleMenu,
 }) => {
-  // Page de connexion : logo seul
   if (isAuthPage || !user) {
     return (
       <header
@@ -70,7 +69,6 @@ export const Header: React.FC<HeaderProps> = ({
     );
   }
 
-  // Utilisateur connecté : menu + logo + badge de rôle
   return (
     <header
       className="sticky top-0 z-40 bg-white px-4 py-3"

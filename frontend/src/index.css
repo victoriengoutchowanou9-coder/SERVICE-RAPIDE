@@ -14,6 +14,38 @@
   --sr-border: #e5e7ef;
   --sr-bg: #f6f7fb;
 }
+/* ===== Thème global e-Tchité : s'applique à tous les écrans ===== */
+
+/* Boutons principaux : pilule + ombre indigo */
+button.bg-brand-600,
+a.bg-brand-600 {
+  border-radius: 999px;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(64, 54, 174, 0.25);
+}
+
+/* Cartes blanches : coins plus doux, bordure et ombre légères */
+.bg-white.rounded-2xl,
+.bg-white.rounded-3xl {
+  border-color: var(--sr-border);
+  box-shadow: 0 4px 20px rgba(43, 38, 112, 0.06);
+}
+.rounded-3xl {
+  border-radius: 24px;
+}
+
+/* Champs de saisie : arrondis, texte lisible sur mobile */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select,
+textarea {
+  border-radius: 16px;
+  font-size: 16px;
+}
+
+/* Titres plus serrés, comme e-Tchité */
+h1, h2, h3, h4 {
+  letter-spacing: -0.01em;
+}
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -105,4 +137,37 @@ body {
   width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
   background: var(--sr-check); color: #fff;
   display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* ===== Thème global e-Tchité : s'applique à tous les écrans ===== */
+
+/* Boutons principaux : pilule + ombre indigo */
+button.bg-brand-600,
+a.bg-brand-600 {
+  border-radius: 999px;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(64, 54, 174, 0.25);
+}
+
+/* Cartes blanches : coins plus doux, bordure et ombre légères */
+.bg-white.rounded-2xl,
+.bg-white.rounded-3xl {
+  border-color: var(--sr-border);
+  box-shadow: 0 4px 20px rgba(43, 38, 112, 0.06);
+}
+.rounded-3xl {
+  border-radius: 24px;
+}
+
+/* Champs de saisie : arrondis, texte lisible sur mobile */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select,
+textarea {
+  border-radius: 16px;
+  font-size: 16px;
+}
+
+/* Titres plus serrés, comme e-Tchité */
+h1, h2, h3, h4 {
+  letter-spacing: -0.01em;
 }

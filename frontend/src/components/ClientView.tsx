@@ -196,7 +196,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
               rating,
               comment,
               date: 'À l’instant',
-            };
+            }; 
             return {
               ...p,
               rating: newScore,
@@ -287,128 +287,113 @@ export const ClientView: React.FC<ClientViewProps> = ({
     });
 
   const availableNowCount = currentProviders.filter((p) => p.availability === 'AVAILABLE').length;
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
-      {/* BANNIÈRE MODÈLE CLIENT : SANS ABONNEMENT - 1 000 FCFA PAR CONTACT */}
-      <div className="rounded-3xl p-4 sm:p-5 border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs bg-gradient-to-r from-brand-500/10 via-brand-50 to-white border-brand-200">
-        <div className="flex items-start sm:items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-brand-600 text-white shadow-xs">
-            <Sparkles className="w-5 h-5" />
+      {/* BANNIÈRE */}
+      <div className="sr-card space-y-4">
+        <div className="flex items-start gap-4">
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-white"
+            style={{ background: 'linear-gradient(135deg, #4036ae, #2b2670)' }}
+          >
+            <Sparkles className="w-6 h-6" />
           </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                Formule Client • Sans abonnement
-              </span>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-brand-100 text-brand-800">
-                Paiement à l'acte
-              </span>
-            </div>
-            <p className="text-xs sm:text-sm font-black text-slate-900 mt-0.5">
-              1 000 FCFA par contact débloqué • Accès immédiat au numéro direct et WhatsApp du prestataire
+          <div className="space-y-2">
+            <span className="sr-badge">Formule client · Paiement à l'acte</span>
+            <h2 className="sr-title text-xl">1 000 FCFA par contact débloqué</h2>
+            <p className="sr-text text-sm">
+              Accès immédiat au numéro direct et WhatsApp du prestataire.
             </p>
           </div>
         </div>
-
-        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowProfileModal(true)}
-            className="inline-flex items-center justify-center gap-2 min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 shadow-xs transition w-full sm:w-auto"
-          >
-            <CreditCard className="w-4 h-4 text-brand-600" />
-            <span>Mes contacts ({unlockedProviderIds.length})</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowProfileModal(true)}
+          className="sr-btn-outline w-full"
+        >
+          <CreditCard className="w-4 h-4" />
+          <span>Mes contacts ({unlockedProviderIds.length})</span>
+        </button>
       </div>
 
-          {actionMsg && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{actionMsg}</span>
-            </div>
-          )}
+      {actionMsg && (
+        <div
+          className="sr-mint-box flex items-center gap-3 text-sm font-semibold"
+          style={{ color: 'var(--sr-title)' }}
+        >
+          <span className="sr-check">
+            <CheckCircle2 className="w-4 h-4" />
+          </span>
+          <span>{actionMsg}</span>
+        </div>
+      )}
 
-      {/* ONGLET 1 : RECHERCHE NATURELLE & LISTE DES PRESTATAIRES */}
+      {/* ONGLET 1 : RECHERCHE & LISTE DES PRESTATAIRES */}
       {activeTab === 'PROVIDERS' && (
         <div className="space-y-5">
-          {/* BARRE DE RECHERCHE & FILTRES */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
-            {/* Champ de recherche intégré */}
+          {/* RECHERCHE & FILTRES */}
+          <div className="sr-card space-y-3">
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search
+                className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2"
+                style={{ color: 'var(--sr-text)' }}
+              />
               <input
                 type="text"
-                placeholder="Rechercher un service, un prestataire, une ville..."
+                placeholder="Rechercher un service, un prestataire..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none transition"
+                className="sr-input"
+                style={{ paddingLeft: '46px' }}
               />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 hover:text-slate-700 transition"
-                >
-                  Effacer
-                </button>
-              )}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              {/* Filtre Ville / Quartier */}
-              <div className="w-full sm:w-64">
-                <input
-                  type="text"
-                  placeholder="Filtrer par ville ou quartier..."
-                  value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
+            <input
+              type="text"
+              placeholder="Filtrer par ville ou quartier..."
+              value={selectedCity}
+              onChange={(e) => setSelectedCity(e.target.value)}
+              className="sr-input"
+            />
 
-              {/* Bouton Disponible Maintenant */}
-              <button
-                type="button"
-                onClick={() => setFilterAvailableNowOnly(!filterAvailableNowOnly)}
-                className={`w-full sm:w-auto px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-2 transition ${
-                  filterAvailableNowOnly
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                }`}
+            <button
+              type="button"
+              onClick={() => setFilterAvailableNowOnly(!filterAvailableNowOnly)}
+              className={filterAvailableNowOnly ? 'sr-btn w-full' : 'sr-btn-outline w-full'}
+            >
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#6bc4a0' }} />
+              <span>Disponibles maintenant ({availableNowCount})</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <ArrowUpDown className="w-4 h-4 shrink-0" style={{ color: 'var(--sr-text)' }} />
+              <span className="text-sm font-semibold">Trier par :</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="sr-input"
+                style={{ width: 'auto', padding: '10px 14px' }}
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Disponibles MAINTENANT ({availableNowCount})</span>
-              </button>
-
-              {/* Comparateur & Tri */}
-              <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="text-[11px] font-bold text-slate-500">Trier par :</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-brand-500"
-                >
-                  <option value="DEFAULT">Pertinence</option>
-                  <option value="PRICE_ASC">Prix le plus bas (Comparer)</option>
-                </select>
-              </div>
+                <option value="DEFAULT">Pertinence</option>
+                <option value="PRICE_ASC">Prix le plus bas</option>
+              </select>
             </div>
 
-            <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px] text-slate-500">
-              <span>{filtered.length} prestataire(s) trouvé(s)</span>
-            </div>
+            <p
+              className="text-sm sr-text pt-3"
+              style={{ borderTop: '1px solid var(--sr-border)' }}
+            >
+              {filtered.length} prestataire(s) trouvé(s)
+            </p>
           </div>
 
           {/* GRILLE DES PRESTATAIRES */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.length === 0 ? (
-              <div className="col-span-full bg-white rounded-3xl p-10 text-center border border-dashed border-slate-200">
-                <Briefcase className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <h4 className="text-sm font-black text-slate-800">Aucun prestataire disponible pour le moment</h4>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              <div className="col-span-full sr-card text-center py-10">
+                <Briefcase className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--sr-check)' }} />
+                <h4 className="sr-title text-lg">Aucun prestataire disponible</h4>
+                <p className="sr-text text-sm mt-2 max-w-sm mx-auto">
                   Dès que des prestataires qualifiés s'inscriront dans votre ville ou pays, ils apparaîtront ici.
                 </p>
               </div>
@@ -423,32 +408,36 @@ export const ClientView: React.FC<ClientViewProps> = ({
               return (
                 <div
                   key={item.id}
-                  className={`bg-white rounded-3xl p-5 border transition shadow-xs flex flex-col justify-between ${
-                    isBusy
-                      ? 'border-slate-200 bg-slate-50/70 opacity-90'
-                      : 'border-slate-200 hover:border-brand-500/50 hover:shadow-md'
-                  }`}
+                  className={`sr-card flex flex-col justify-between ${isBusy ? 'opacity-70' : ''}`}
                 >
                   <div>
-                    {/* EN-TÊTE : Photo + Un seul nom + Disponibilité en direct */}
+                    {/* EN-TÊTE : Photo + Un seul nom + Disponibilité */}
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3">
                         <div
-                          className="relative shrink-0 cursor-pointer group"
+                          className="relative shrink-0 cursor-pointer"
                           onClick={() => setSelectedDetailProvider(item)}
-                          title="Cliquez pour voir le profil complet et les photos"
+                          title="Voir le profil complet"
                         >
                           {item.photoUrl ? (
                             <img
                               src={item.photoUrl}
                               alt={item.singleName}
-                              className="w-14 h-14 rounded-2xl object-cover ring-2 ring-slate-100 shadow-xs group-hover:ring-brand-500 transition"
+                              className="w-16 h-16 rounded-2xl object-cover"
+                              style={{ border: '1px solid var(--sr-border)' }}
                               onError={(e) => {
                                 (e.target as HTMLElement).style.display = 'none';
                               }}
                             />
                           ) : (
-                            <div className="w-14 h-14 rounded-2xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center font-black text-lg ring-2 ring-slate-100 shadow-xs group-hover:ring-brand-500 transition">
+                            <div
+                              className="w-16 h-16 rounded-2xl flex items-center justify-center font-extrabold text-xl"
+                              style={{
+                                background: 'var(--sr-mint)',
+                                color: 'var(--sr-primary-dark)',
+                                border: '1px solid var(--sr-border)',
+                              }}
+                            >
                               {item.singleName?.charAt(0).toUpperCase() || 'P'}
                             </div>
                           )}
@@ -457,48 +446,54 @@ export const ClientView: React.FC<ClientViewProps> = ({
                         <div
                           className="cursor-pointer"
                           onClick={() => setSelectedDetailProvider(item)}
-                          title="Cliquez pour voir le profil complet et les photos"
+                          title="Voir le profil complet"
                         >
                           <div className="flex items-center gap-2">
                             {/* RÈGLE STRICTE : Un seul nom visible avant déblocage */}
-                            <h4 className="text-sm font-black text-slate-900 hover:text-brand-600 transition">
+                            <h4 className="sr-title text-lg">
                               {isUnlocked && item.contact.fullName ? item.contact.fullName : item.singleName}
                             </h4>
                           </div>
-                          <p className="text-xs font-bold text-brand-600 mt-0.5">{item.serviceOffered}</p>
+                          <p className="text-sm font-semibold mt-0.5" style={{ color: 'var(--sr-primary)' }}>
+                            {item.serviceOffered}
+                          </p>
                         </div>
                       </div>
 
-                      {/* DISPONIBILITÉ MAINTENANT OU OCCUPÉ */}
+                      {/* DISPONIBILITÉ */}
                       <span
-                        className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 ${
+                        className="text-[11px] font-bold px-3 py-2 rounded-full flex items-center gap-2 shrink-0"
+                        style={
                           isBusy
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-emerald-100 text-emerald-800 ring-2 ring-emerald-500/20'
-                        }`}
+                            ? { background: '#fde8ec', color: '#a1223b' }
+                            : { background: 'var(--sr-mint)', color: '#1b6b4a' }
+                        }
                       >
                         <span
-                          className={`w-2 h-2 rounded-full ${
-                            isBusy ? 'bg-rose-600' : 'bg-emerald-600 animate-pulse'
-                          }`}
+                          className="w-2.5 h-2.5 rounded-full"
+                          style={{ background: isBusy ? '#e11d48' : '#6bc4a0' }}
                         />
                         <span>{isBusy ? 'Occupé' : 'Disponible MAINTENANT'}</span>
                       </span>
                     </div>
 
-                    {/* ZONE GÉOGRAPHIQUE & ZONES D'INTERVENTION COUVERTES */}
-                    <div className="space-y-1 mb-3">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    {/* ZONE GÉOGRAPHIQUE */}
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--sr-title)' }}>
+                        <MapPin className="w-4 h-4 shrink-0" style={{ color: 'var(--sr-text)' }} />
                         <span>
                           {item.city}, {item.department}
                         </span>
                       </div>
                       {item.interventionZones && item.interventionZones.length > 0 && (
-                        <div className="flex items-center gap-1 flex-wrap pl-5 text-[10px] text-slate-500 font-medium">
+                        <div className="flex items-center gap-1.5 flex-wrap pl-6 text-xs sr-text">
                           <span>Zones :</span>
                           {item.interventionZones.map((z) => (
-                            <span key={z} className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
+                            <span
+                              key={z}
+                              className="px-2 py-0.5 rounded-md"
+                              style={{ background: '#f1f1f4', color: 'var(--sr-title)' }}
+                            >
                               {z}
                             </span>
                           ))}
@@ -506,13 +501,14 @@ export const ClientView: React.FC<ClientViewProps> = ({
                       )}
                     </div>
 
-                    {/* COMPÉTENCES / SERVICES DÉTAILLÉS */}
+                    {/* COMPÉTENCES */}
                     {item.skills && item.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-3">
+                      <div className="flex flex-wrap gap-2 mb-4">
                         {item.skills.map((skill) => (
                           <span
                             key={skill}
-                            className="text-[10px] font-semibold bg-brand-50 text-brand-800 px-2 py-0.5 rounded-lg border border-brand-200/50"
+                            className="text-xs font-semibold px-3 py-1.5 rounded-full"
+                            style={{ background: 'var(--sr-lavender)', color: 'var(--sr-primary-dark)' }}
                           >
                             ✓ {skill}
                           </span>
@@ -520,86 +516,99 @@ export const ClientView: React.FC<ClientViewProps> = ({
                       </div>
                     )}
 
-                    {/* PRIX ESTIMÉ DU SERVICE & DÉCOMPOSITION TRANSPARENTE */}
-                    <div className="mb-3.5 p-3 bg-emerald-50 rounded-2xl border border-emerald-200/90 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
-                          Prix Total Estimé
+                    {/* PRIX ESTIMÉ */}
+                    <div className="sr-mint-box mb-4">
+                      <span
+                        className="text-[11px] font-bold uppercase tracking-widest block"
+                        style={{ color: '#1b6b4a' }}
+                      >
+                        Prix total estimé
+                      </span>
+                      <p className="sr-title text-2xl mt-1">
+                        {estimatedPrice.toLocaleString()} FCFA
+                        <span className="text-sm font-semibold ml-1" style={{ color: '#1b6b4a' }}>
+                          / {item.pricingUnit || 'prestation'}
                         </span>
-                        <p className="text-sm font-black text-emerald-950 leading-tight">
-                          {estimatedPrice.toLocaleString()} FCFA
-                          <span className="text-[11px] font-semibold text-emerald-700 ml-1">
-                            / {item.pricingUnit || 'prestation'}
-                          </span>
-                        </p>
-                        <p className="text-[10px] text-emerald-700 mt-0.5">
-                          Base : {(item.basePrice || 5000).toLocaleString()} FCFA
-                          {item.travelRequired && ` + Déplacement : ${item.travelFee.toLocaleString()} FCFA`}
-                        </p>
-                      </div>
+                      </p>
+                      <p className="text-xs mt-1" style={{ color: '#1b6b4a' }}>
+                        Base : {(item.basePrice || 5000).toLocaleString()} FCFA
+                        {item.travelRequired && ` + Déplacement : ${item.travelFee.toLocaleString()} FCFA`}
+                      </p>
                     </div>
 
                     {/* Modalités d'intervention */}
-                    <div className="flex flex-wrap gap-2 text-[11px] font-medium text-slate-600 mb-4">
-                      <span className="inline-flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg">
-                        <Building className="w-3 h-3 text-slate-500" />
+                    <div className="flex flex-wrap gap-2 text-xs font-medium mb-4">
+                      <span
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl"
+                        style={{ background: '#f1f1f4', color: 'var(--sr-title)' }}
+                      >
+                        <Building className="w-3.5 h-3.5" />
                         <span>Sur place : {item.receivesOnSite ? 'Oui' : 'Non'}</span>
                       </span>
-                      <span className="inline-flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg">
-                        <Truck className="w-3 h-3 text-slate-500" />
+                      <span
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl"
+                        style={{ background: '#f1f1f4', color: 'var(--sr-title)' }}
+                      >
+                        <Truck className="w-3.5 h-3.5" />
                         <span>
                           Déplacement : {item.travelRequired ? `Oui (${item.travelFee} FCFA)` : 'Non'}
                         </span>
                       </span>
                     </div>
 
-                    {/* BOUTON VOIR LE PROFIL & PHOTOS */}
+                    {/* BOUTON VOIR LE PROFIL */}
                     <button
                       type="button"
                       onClick={() => setSelectedDetailProvider(item)}
-                      className="w-full inline-flex items-center justify-center gap-2 min-h-[38px] px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition mb-1 shadow-2xs"
+                      className="sr-btn-outline w-full mb-1"
                     >
-                      <Eye className="w-3.5 h-3.5 text-brand-600" />
+                      <Eye className="w-4 h-4" />
                       <span>Consulter le profil & photos ({item.portfolioPhotos?.length || 0})</span>
                     </button>
                   </div>
 
-                  {/* ZONE CONTACT (DÉBLOQUÉ / BLOQUÉ) - BOUTONS UNIFORMISÉS ET ALIGNÉS */}
-                  <div className="pt-3 border-t border-slate-100 space-y-2">
-                    {/* Zone de Contact Débloqué / Bloqué */}
+                  {/* ZONE CONTACT (DÉBLOQUÉ / BLOQUÉ) */}
+                  <div className="pt-4 space-y-3" style={{ borderTop: '1px solid var(--sr-border)' }}>
                     {isUnlocked ? (
-                      <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider flex items-center gap-1">
-                            <Unlock className="w-3 h-3" /> Contact Débloqué
+                      <div className="sr-mint-box">
+                        <div className="flex items-center justify-between mb-3 gap-2">
+                          <span
+                            className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+                            style={{ color: '#1b6b4a' }}
+                          >
+                            <Unlock className="w-3.5 h-3.5" /> Contact débloqué
                           </span>
                           {item.refundStatus === 'PENDING' ? (
-                            <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                            <span
+                              className="text-[11px] font-bold px-2.5 py-1 rounded-full"
+                              style={{ background: '#fef3c7', color: '#92400e' }}
+                            >
                               Remboursement en attente
                             </span>
                           ) : (
                             <button
                               type="button"
                               onClick={() => setRefundModalItem(item)}
-                              className="text-[10px] font-bold text-slate-500 hover:text-rose-600 underline"
+                              className="text-[11px] font-semibold underline"
+                              style={{ color: 'var(--sr-text)' }}
                             >
                               Signaler un litige
                             </button>
                           )}
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-                          <div className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                            <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <div className="space-y-3">
+                          <div
+                            className="text-base font-bold flex items-center gap-2"
+                            style={{ color: 'var(--sr-title)' }}
+                          >
+                            <Phone className="w-4 h-4 shrink-0" />
                             <span>{item.contact.directPhone}</span>
                           </div>
 
-                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                            <a
-                              href={`tel:${item.contact.directPhone}`}
-                              className="inline-flex items-center justify-center min-h-[38px] px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition"
-                            >
-                              <Phone className="w-3.5 h-3.5 mr-1" />
+                          <div className="flex flex-col gap-2">
+                            <a href={`tel:${item.contact.directPhone}`} className="sr-btn w-full">
+                              <Phone className="w-4 h-4" />
                               <span>Appeler</span>
                             </a>
                             {item.contact.whatsappNumber && (
@@ -607,10 +616,11 @@ export const ClientView: React.FC<ClientViewProps> = ({
                                 href={`https://wa.me/${item.contact.whatsappNumber.replace(/[^0-9]/g, '')}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center justify-center min-h-[38px] px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition"
+                                className="sr-btn w-full"
+                                style={{ background: '#16a34a', boxShadow: '0 6px 16px rgba(22,163,74,0.25)' }}
                               >
-                                <MessageCircle className="w-3.5 h-3.5 mr-1" />
-                                <span>WhatsApp Direct</span>
+                                <MessageCircle className="w-4 h-4" />
+                                <span>WhatsApp direct</span>
                               </a>
                             )}
                           </div>
@@ -619,31 +629,41 @@ export const ClientView: React.FC<ClientViewProps> = ({
                     ) : (
                       <div>
                         {isBusy ? (
-                          <div className="flex items-center justify-between p-2.5 bg-rose-50 rounded-2xl border border-rose-200">
-                            <div className="flex items-center gap-2 text-rose-700 text-xs font-bold">
+                          <div
+                            className="flex items-center justify-between gap-2 p-3 rounded-2xl"
+                            style={{ background: '#fde8ec' }}
+                          >
+                            <div
+                              className="flex items-center gap-2 text-sm font-semibold"
+                              style={{ color: '#a1223b' }}
+                            >
                               <AlertCircle className="w-4 h-4 shrink-0" />
-                              <span>Prestataire Occupé : Prise de contact suspendue</span>
+                              <span>Prestataire occupé : contact suspendu</span>
                             </div>
-                            <span className="text-[10px] bg-rose-200 text-rose-900 font-extrabold px-2 py-0.5 rounded-md">
+                            <span
+                              className="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0"
+                              style={{ background: '#fbcfd8', color: '#a1223b' }}
+                            >
                               Occupé
                             </span>
                           </div>
                         ) : (
-                          <div className="space-y-2">
-                            <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
-                              <Lock className="w-3 h-3 text-brand-600" />
-                              <span>Coordonnées masquées • Déblocage unitaire à 1 000 FCFA</span>
+                                                    <div className="space-y-3">
+                            <p
+                              className="text-sm font-semibold flex items-center gap-2"
+                              style={{ color: 'var(--sr-text)' }}
+                            >
+                              <Lock className="w-4 h-4 shrink-0" style={{ color: 'var(--sr-primary)' }} />
+                              <span>Coordonnées masquées · Déblocage unitaire à 1 000 FCFA</span>
                             </p>
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 w-full">
-                              <button
-                                type="button"
-                                onClick={() => setUnlockModalProvider(item)}
-                                className="inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl text-xs font-black transition flex-1 sm:flex-initial shadow-xs gap-1.5 bg-brand-600 hover:bg-brand-700 text-white"
-                              >
-                                <Lock className="w-3.5 h-3.5" />
-                                <span>Débloquer ce contact (1 000 FCFA)</span>
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setUnlockModalProvider(item)}
+                              className="sr-btn w-full"
+                            >
+                              <Lock className="w-4 h-4" />
+                              <span>Débloquer ce contact (1 000 FCFA)</span>
+                            </button>
                           </div>
                         )}
                       </div>
@@ -659,30 +679,34 @@ export const ClientView: React.FC<ClientViewProps> = ({
       {/* ONGLET 2 : SUIVI DES DEMANDES & RÉSERVATIONS DU CLIENT */}
       {activeTab === 'REQUESTS' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-black text-slate-900">Mes Demandes & Réservations</h3>
-              <p className="text-xs text-slate-500">
+              <h3 className="sr-title text-xl">Mes demandes & réservations</h3>
+              <p className="sr-text text-sm mt-1">
                 Suivez en temps réel la prise en charge de vos missions par les prestataires
               </p>
             </div>
-            <button
-              onClick={() => setActiveTab('PROVIDERS')}
-              className="text-xs font-bold bg-brand-600 text-white px-3 py-1.5 rounded-xl hover:bg-brand-700 transition"
-            >
-              + Nouvelle demande
-            </button>
           </div>
+          <button
+            onClick={() => setActiveTab('PROVIDERS')}
+            className="sr-btn w-full"
+          >
+            <span>Nouvelle demande</span>
+            <span>→</span>
+          </button>
 
           {clientRequests.length === 0 ? (
-            <div className="p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-3">
-              <Clock className="w-10 h-10 text-slate-300 mx-auto" />
-              <p className="text-xs font-bold text-slate-600">Vous n'avez pas encore envoyé de demande de service.</p>
+            <div className="sr-card text-center space-y-4 py-10">
+              <Clock className="w-10 h-10 mx-auto" style={{ color: 'var(--sr-check)' }} />
+              <p className="sr-text text-sm">
+                Vous n'avez pas encore envoyé de demande de service.
+              </p>
               <button
                 onClick={() => setActiveTab('PROVIDERS')}
-                className="bg-brand-600 text-white text-xs font-bold px-4 py-2 rounded-xl"
+                className="sr-btn"
               >
-                Chercher un prestataire
+                <span>Chercher un prestataire</span>
+                <span>→</span>
               </button>
             </div>
           ) : (
@@ -694,40 +718,42 @@ export const ClientView: React.FC<ClientViewProps> = ({
                 return (
                   <div
                     key={req.id}
-                    className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                    className="sr-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span
-                          className={`text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 ${
+                          className="text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5"
+                          style={
                             isImmediate
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                              : 'bg-blue-100 text-blue-900 border border-blue-300'
-                          }`}
+                              ? { background: '#fef3c7', color: '#92400e' }
+                              : { background: 'var(--sr-lavender)', color: 'var(--sr-primary-dark)' }
+                          }
                         >
                           {isImmediate ? (
                             <>
-                              <Zap className="w-3 h-3 text-amber-600" />
-                              <span>MAINTENANT (Immédiat)</span>
+                              <Zap className="w-3.5 h-3.5" />
+                              <span>Maintenant (immédiat)</span>
                             </>
                           ) : (
                             <>
-                              <Calendar className="w-3 h-3 text-blue-600" />
-                              <span>PROGRAMMÉ</span>
+                              <Calendar className="w-3.5 h-3.5" />
+                              <span>Programmé</span>
                             </>
                           )}
                         </span>
 
                         <span
-                          className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                          className="text-[11px] font-bold px-3 py-1.5 rounded-full"
+                          style={
                             req.status === 'ACCEPTED'
-                              ? 'bg-emerald-100 text-emerald-800'
+                              ? { background: 'var(--sr-mint)', color: '#1b6b4a' }
                               : req.status === 'REJECTED'
-                              ? 'bg-rose-100 text-rose-800'
+                              ? { background: '#fde8ec', color: '#a1223b' }
                               : req.status === 'COMPLETED'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-amber-50 text-amber-800 border border-amber-200'
-                          }`}
+                              ? { background: 'var(--sr-lavender)', color: 'var(--sr-primary-dark)' }
+                              : { background: '#fef3c7', color: '#92400e' }
+                          }
                         >
                           {req.status === 'ACCEPTED' && '✓ Acceptée par le prestataire'}
                           {req.status === 'REJECTED' && '✕ Refusée'}
@@ -735,17 +761,17 @@ export const ClientView: React.FC<ClientViewProps> = ({
                           {req.status === 'PENDING' && '⏳ En attente de confirmation'}
                         </span>
 
-                        <span className="text-[10px] text-slate-400">{req.createdAt}</span>
+                        <span className="text-xs sr-text">{req.createdAt}</span>
                       </div>
 
-                      <h4 className="text-sm font-black text-slate-900">
-                        {req.serviceTitle} • Prestataire : {req.providerSingleName}
+                      <h4 className="sr-title text-lg">
+                        {req.serviceTitle} · Prestataire : {req.providerSingleName}
                       </h4>
-                      <p className="text-xs text-slate-600">{req.description}</p>
-                      <p className="text-[11px] text-slate-500">
-                        📍 {req.location} • 📅 {req.scheduledDateTime}
+                                        <p className="sr-text text-sm">{req.description}</p>
+                      <p className="text-sm sr-text">
+                        📍 {req.location} · 📅 {req.scheduledDateTime}
                       </p>
-                      <p className="text-xs font-black text-emerald-700">
+                      <p className="text-base font-bold" style={{ color: '#1b6b4a' }}>
                         Montant estimé : {req.estimatedPrice.toLocaleString()} FCFA ({req.paymentMethod})
                       </p>
                     </div>
@@ -754,7 +780,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowSupportModal(true)}
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs transition"
+                        className="sr-btn-outline w-full"
                       >
                         Signaler un litige
                       </button>
@@ -770,11 +796,9 @@ export const ClientView: React.FC<ClientViewProps> = ({
       {/* ONGLET 3 : FIL D'ACTUALITÉ */}
       {activeTab === 'FEED' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-              Réalisations, Conseils & Publicités Panafricaines
-            </h3>
-            <span className="text-[10px] text-slate-400">Fil d'actualité en direct</span>
+          <div className="space-y-2">
+            <span className="sr-badge">Fil d'actualité en direct</span>
+            <h3 className="sr-title text-xl">Réalisations, conseils & publicités panafricaines</h3>
           </div>
           <FeedPosts
             userRole="CLIENT"
@@ -803,52 +827,63 @@ export const ClientView: React.FC<ClientViewProps> = ({
 
       {/* Modal Déblocage Contact */}
       {unlockModalProvider && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-auto">
-            <h4 className="text-base font-black text-slate-900 mb-1">Mise en Contact Sécurisée</h4>
-            <p className="text-xs text-slate-500 mb-4">
-              Prestataire : <strong>{unlockModalProvider.singleName}</strong> ({unlockModalProvider.serviceOffered})
-            </p>
-
-            <div className="space-y-3 mb-4">
-              <div className="p-3 bg-brand-50 rounded-2xl border border-brand-200 text-brand-900 text-xs">
-                <p className="font-bold">📱 Déblocage du contact prestataire</p>
-                <p className="text-[11px] text-brand-800 mt-0.5">
-                  Accédez instantanément au numéro d'appel direct et au WhatsApp du professionnel en validant le paiement unitaire.
-                </p>
-              </div>
-              <div className="flex items-center justify-between text-xs font-bold p-2.5 bg-slate-50 rounded-xl">
-                <span>Frais de mise en relation :</span>
-                <span className="text-brand-600 font-black">1 000 FCFA</span>
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Numéro Mobile Money (Optionnel pour préremplissage)
-                </label>
-                <input
-                  type="tel"
-                  placeholder="Ex: 0700000000"
-                  value={momoPhone}
-                  onChange={(e) => setMomoPhone(e.target.value)}
-                  className="w-full min-h-[42px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
-                />
-              </div>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+          style={{ background: 'rgba(15, 15, 20, 0.55)' }}
+        >
+          <div className="sr-card max-w-sm w-full my-auto space-y-4" style={{ padding: '24px' }}>
+            <div className="space-y-2">
+              <span className="sr-badge">Mise en contact sécurisée</span>
+              <h4 className="sr-title text-xl">Débloquer le contact</h4>
+              <p className="sr-text text-sm">
+                Prestataire : <strong>{unlockModalProvider.singleName}</strong> ({unlockModalProvider.serviceOffered})
+              </p>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setUnlockModalProvider(null)}
-                className="inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex-1"
+            <div className="sr-mint-box">
+              <p className="font-bold text-sm" style={{ color: 'var(--sr-title)' }}>
+                📱 Déblocage du contact prestataire
+              </p>
+              <p className="text-sm mt-1" style={{ color: '#1b6b4a' }}>
+                Accédez instantanément au numéro d'appel direct et au WhatsApp du professionnel en validant le paiement unitaire.
+              </p>
+            </div>
+
+            <div
+              className="flex items-center justify-between text-sm font-semibold p-4 rounded-2xl"
+              style={{ background: '#f1f1f4', color: 'var(--sr-title)' }}
+            >
+              <span>Frais de mise en relation</span>
+              <span className="sr-title">1 000 FCFA</span>
+            </div>
+
+            <div>
+              <label
+                className="block text-sm font-semibold mb-2"
+                style={{ color: 'var(--sr-title)' }}
               >
-                Annuler
+                Numéro Mobile Money (optionnel)
+              </label>
+              <input
+                type="tel"
+                placeholder="Ex: 0700000000"
+                value={momoPhone}
+                onChange={(e) => setMomoPhone(e.target.value)}
+                className="sr-input"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button type="button" onClick={handleConfirmUnlock} className="sr-btn w-full">
+                <span>Payer 1 000 FCFA (SasPay)</span>
+                <span>→</span>
               </button>
               <button
                 type="button"
-                onClick={handleConfirmUnlock}
-                className="inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-brand-600 hover:bg-brand-700 text-white shadow-xs transition flex-1"
+                onClick={() => setUnlockModalProvider(null)}
+                className="sr-btn-outline w-full"
               >
-                Payer 1 000 FCFA (SasPay)
+                Annuler
               </button>
             </div>
           </div>
@@ -857,40 +892,53 @@ export const ClientView: React.FC<ClientViewProps> = ({
 
       {/* Modal Remboursement */}
       {refundModalItem && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-auto">
-            <h4 className="text-base font-black text-slate-900 mb-1">Demande de Remboursement</h4>
-            <p className="text-xs text-slate-500 mb-3">
-              Chaque réclamation est vérifiée avec bienveillance par l'équipe support.
-            </p>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+          style={{ background: 'rgba(15, 15, 20, 0.55)' }}
+        >
+          <div className="sr-card max-w-sm w-full my-auto space-y-4" style={{ padding: '24px' }}>
+            <div className="space-y-2">
+              <span className="sr-badge">Réclamation</span>
+              <h4 className="sr-title text-xl">Demande de remboursement</h4>
+              <p className="sr-text text-sm">
+                Chaque réclamation est vérifiée avec bienveillance par l'équipe support.
+              </p>
+            </div>
 
-            <div className="mb-4">
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">Motif de votre réclamation</label>
+            <div>
+              <label
+                className="block text-sm font-semibold mb-2"
+                style={{ color: 'var(--sr-title)' }}
+              >
+                Motif de votre réclamation
+              </label>
               <textarea
                 rows={3}
                 required
-                value={refundReason}
+                               value={refundReason}
                 onChange={(e) => setRefundReason(e.target.value)}
                 placeholder="Ex: Le numéro ne répond pas, le prestataire refuse d'intervenir..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
+                className="sr-input"
+                style={{ borderRadius: '16px' }}
               />
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setRefundModalItem(null)}
-                className="inline-flex items-center justify-center min-h-[42px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex-1"
-              >
-                Fermer
-              </button>
+            <div className="flex flex-col gap-2 pt-2">
               <button
                 type="button"
                 onClick={handleRequestRefund}
                 disabled={!refundReason.trim()}
-                className="inline-flex items-center justify-center min-h-[42px] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white shadow-xs transition flex-1"
+                className="sr-btn w-full disabled:opacity-50"
               >
-                Envoyer la demande
+                <span>Envoyer la demande</span>
+                <span>→</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRefundModalItem(null)}
+                className="sr-btn-outline w-full"
+              >
+                Fermer
               </button>
             </div>
           </div>
@@ -918,4 +966,4 @@ export const ClientView: React.FC<ClientViewProps> = ({
       )}
     </div>
   );
-};
+};               
